@@ -1,4 +1,7 @@
 # vcpkg Wrapper for MATLAB&reg;
+
+[![View vcpkg Wrapper for MATLAB on File Exchange](https://www.mathworks.com/matlabcentral/fileexchange/182780-vcpkg-wrapper-for-matlab)
+
 This simple toolbox wraps [vcpkg - Open source C/C++ dependency manager from Microsoft&reg;](https://vcpkg.io/en/index.html) to ease the integration into MATLAB projects that use vcpkg manifest files to define its dependencies.
 The wrapper toolbox figures out the host and target triplets as well as the compiler paths automatically. It only required vcpkg to be available on the system's path.
 
