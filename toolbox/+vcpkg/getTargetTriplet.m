@@ -6,7 +6,7 @@ triplet = '';
 
 if isMATLABReleaseOlderThan('R2026a') && ~isMATLABReleaseOlderThan('R2020b')
     spkgInfo = matlabshared.supportpkg.getInstalled;
-    if any(contains({spkgInfo.Name}, 'Simulink Real-Time Target Support Package'))
+    if ~isempty(spkgInfo) && any(contains({spkgInfo.Name}, 'Simulink Real-Time Target Support Package'))
         triplet = 'x64-qnx-static';
     end
 elseif isMATLABReleaseOlderThan('R2020b')
