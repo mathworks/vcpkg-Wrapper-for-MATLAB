@@ -5,11 +5,9 @@ function triplet = getTargetTriplet
 triplet = '';
 
 if isMATLABReleaseOlderThan('R2026a') && ~isMATLABReleaseOlderThan('R2020b')
-    try
-        slrealtime.qnxSetupFcn;
+    spkgInfo = matlabshared.supportpkg.getInstalled;
+    if any(contains({spkgInfo.Name}, 'Simulink Real-Time Target Support Package'))
         triplet = 'x64-qnx-static';
-    catch
-        % SLRT is not installed. Don't build for any target
     end
 elseif isMATLABReleaseOlderThan('R2020b')
     triplet = 'x86-windows-static';
