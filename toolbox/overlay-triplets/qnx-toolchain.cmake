@@ -12,7 +12,7 @@ if(NOT DEFINED ENV{QNX_HOST} OR NOT DEFINED ENV{QNX_TARGET})
     message(FATAL_ERROR "QNX environment not found. Please 'source qnxsdp-env.sh' first.")
 endif()
 
-# Allow caller to choose architecture; default to aarch64
+# Allow caller to choose architecture; default to x86_64
 set(CMAKE_SYSTEM_PROCESSOR "x86_64" CACHE STRING "QNX target arch (aarch64|armv7|x86_64)")
 
 # Map arch → qcc variant string and sysroot suffix
@@ -43,7 +43,6 @@ set(CMAKE_CXX_COMPILER_TARGET ${QNX_QCC_VARIANT})
 set(CMAKE_SYSROOT "$ENV{QNX_TARGET}/${QNX_SYSROOT_SUFFIX}")
 
 # Make sure CMake finds things in the QNX sysroot first
-set(CMAKE_FIND_ROOT_PATH "$ENV{QNX_TARGET}")
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM BOTH)
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY NEVER)
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE BOTH)
