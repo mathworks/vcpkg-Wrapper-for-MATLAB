@@ -32,7 +32,7 @@ end
 %% Figure out target triplet
 
 % Initialize variables
-qnxSdpBat = '';
+targetEnvRootBat = '';
 
 % Figure out target triplet if required
 if options.buildHostOnly
@@ -41,16 +41,28 @@ else
     targetTriplet = vcpkg.getTargetTriplet;
 
     if contains(targetTriplet, 'qnx', 'IgnoreCase', true)
-        % Using QNX with Siumink Real-Time Target Support Package
+        % Using QNX with Simulink Real-Time Target Support Package
         slrealtime.qnxSetupFcn;
         qnxSpRoot = getenv('SLREALTIME_QNX_SP_ROOT');
         qnxVersion = getenv('SLREALTIME_QNX_VERSION');
 
         if ispc
-            qnxSdpBat = ['&& ',fullfile(qnxSpRoot,qnxVersion,'qnxsdp-env.bat')];
+            targetEnvRootBat = ['&& ',fullfile(qnxSpRoot,qnxVersion,'qnxsdp-env.bat')];
         elseif isunix
             % Sourcing the .sh file for qcc compilation.
-            qnxSdpBat = ['&& ',append('source ',fullfile(qnxSpRoot,qnxVersion,'qnxsdp-env.sh'))];
+            targetEnvRootBat = ['&& ',append('source ',fullfile(qnxSpRoot,qnxVersion,'qnxsdp-env.sh'))];
+        end
+    elseif contains(targetTriplet, 'x64-speedgoat-linux', 'IgnoreCase', true)
+        % Yocto cc specific implementation
+        x64CCRoot = getenv('X64CC_ROOT');
+        if isempty(x64CCRoot)
+            %Error x64 cc root path not defined.
+            error(message('slrealtime:utils:x64CCRootNotSet'));
+        end
+        if ispc
+            targetEnvRootBat = ['&& ',fullfile(x64CCRoot,'toolchain','x64cc-setup-env.bat')];
+        else
+            error('Current host OS is still not supported.');
         end
     end
 
@@ -67,7 +79,7 @@ addToSystemPath(getenv('VCPKG_ROOT'));
 
 % Build up vcpkg full command
 vcpkgCmd = ['cd ', manifestFolder, ' ',...
-    qnxSdpBat,...
+    targetEnvRootBat,...
     ' && vcpkg install ',targetTriplet,' --host-triplet ', vcpkg.getHostTriplet,...
     ' --overlay-triplets "', fullfile(vcpkg.getToolboxRoot,'overlay-triplets'), '" ', strjoin(vpckgArguments,' ')];
 
