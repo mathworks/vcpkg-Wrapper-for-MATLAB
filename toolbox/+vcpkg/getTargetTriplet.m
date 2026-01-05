@@ -12,7 +12,10 @@ if isMATLABReleaseOlderThan('R2026a') && ~isMATLABReleaseOlderThan('R2020b')
 elseif isMATLABReleaseOlderThan('R2020b')
     triplet = 'x86-windows-static';
 else
-    error('Target triplet is not supported for MATLAB R2026a and later yet. Use buildHostOnly.');
+    % MATLAB R2026a or later
+    if exist('speedgoat','file')
+        triplet = 'x64-speedgoat-linux-static';
+    end
 end
 
 end
