@@ -3,7 +3,7 @@ function buildVcpkgDeps(manifestFolder, vpckgArguments, options)
 % Copyright 2025 The MathWorks, Inc.
 
 arguments
-    manifestFolder {mustBeFolder}
+    manifestFolder char {mustBeFolder}
     vpckgArguments {mustBeText} = {};
     options.buildHostOnly = false;
 end
