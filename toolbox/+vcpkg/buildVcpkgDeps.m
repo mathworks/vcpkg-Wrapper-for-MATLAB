@@ -54,13 +54,20 @@ else
         end
     elseif contains(targetTriplet, 'x64-speedgoat-linux', 'IgnoreCase', true)
         % Yocto cc specific implementation
-        x64CCRoot = getenv('X64CC_ROOT');
-        if isempty(x64CCRoot)
+        try
+            hwConfigObj = slrealtime.internal.HardwareConfig.getHWConfigObject();
+            x64CCPath = hwConfigObj.getToolchainPath('x64');
+        catch ME
+            error(message('slrealtime:utils:toolChainError', ME.message));
+        end
+
+        if isempty(x64CCPath)
             %Error x64 cc root path not defined.
             error(message('slrealtime:utils:x64CCRootNotSet'));
         end
+
         if ispc
-            targetEnvRootBat = ['&& ',fullfile(x64CCRoot,'toolchain','x64cc-setup-env.bat')];
+            targetEnvRootBat = ['&& ',fullfile(x64CCPath,'x64cc-setup-env.bat')];
         else
             error('Current host OS is still not supported.');
         end
