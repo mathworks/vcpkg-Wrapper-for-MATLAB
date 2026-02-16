@@ -4,6 +4,8 @@ function triplet = getHostTriplet
 
 cfg = mex.getCompilerConfigurations('C++', 'Selected');
 
+assert(~isempty(cfg), 'No compiler was found for this MATLAB installation. Please run "mex -setup" on the MATLAB command window first, and install a supported C/C++ compiler.');
+
 if ispc
     if contains(cfg.ShortName,'MSVC','IgnoreCase',true)
         triplet = 'x64-windows-static-md';
