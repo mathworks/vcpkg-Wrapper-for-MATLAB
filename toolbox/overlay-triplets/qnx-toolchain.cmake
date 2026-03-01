@@ -59,3 +59,6 @@ add_compile_definitions(_QNX_SOURCE)
 
 # Set fPIC flag
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+# Do not treat include directories from the interfaces of consumed Imported Targets as system directories.
+set(CMAKE_NO_SYSTEM_FROM_IMPORTED ON)
