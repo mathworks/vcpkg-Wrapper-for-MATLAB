@@ -56,6 +56,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH)
 
 # QNX doesn’t use glibc; some ports may need feature tests or POSIX settings.
 add_compile_definitions(_QNX_SOURCE)
+add_compile_definitions(__GNU__)
 
 # Set fPIC flag
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
