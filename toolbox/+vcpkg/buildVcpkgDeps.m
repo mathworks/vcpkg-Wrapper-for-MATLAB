@@ -52,22 +52,35 @@ else
             % Sourcing the .sh file for qcc compilation.
             targetEnvRootBat = ['&& ',append('source ',fullfile(qnxSpRoot,qnxVersion,'qnxsdp-env.sh'))];
         end
-    elseif contains(targetTriplet, 'x64-speedgoat-linux', 'IgnoreCase', true)
+    elseif contains(targetTriplet, 'speedgoat-linux', 'IgnoreCase', true)
+        if contains(targetTriplet, 'x64', 'IgnoreCase', true)
+            arch = 'x64';
+        elseif contains(targetTriplet, 'arm64', 'IgnoreCase', true)
+            arch = 'aarch64';
+        end
+
         % Yocto cc specific implementation
         try
             hwConfigObj = slrealtime.internal.HardwareConfig.getHWConfigObject();
-            x64CCPath = hwConfigObj.getToolchainPath('x64');
+            CCPath = hwConfigObj.getToolchainPath(arch);
         catch ME
             error(message('slrealtime:utils:toolChainError', ME.message));
         end
 
-        if isempty(x64CCPath)
-            %Error x64 cc root path not defined.
-            error(message('slrealtime:utils:x64CCRootNotSet'));
+        if isempty(CCPath)
+            if strcmp(arch,'x64')
+                error(message('slrealtime:utils:x64CCRootNotSet'));
+            elseif strcmp(arch,'aarch64')
+                error(message('slrealtime:utils:armCCRootNotSet'));
+            else
+                error('Compiler toolchain root not set.');
+            end
         end
 
         if ispc
-            targetEnvRootBat = ['&& ',fullfile(x64CCPath,'x64cc-setup-env.bat')];
+            targetEnvRootBat = ['&& ',fullfile(CCPath,sprintf('%scc-setup-env.bat',arch))];
+        elseif isunix && ~ismac
+            targetEnvRootBat = ['&& ',append('source ',fullfile(CCPath,sprintf('%scc-setup-env.sh',arch)))];
         else
             error('Current host OS is still not supported.');
         end
