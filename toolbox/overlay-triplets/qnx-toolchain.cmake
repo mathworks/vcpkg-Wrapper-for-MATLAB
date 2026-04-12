@@ -5,7 +5,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 # Tell CMake we target QNX
-set(CMAKE_SYSTEM_NAME QNX)
+set(CMAKE_SYSTEM_NAME QNX CACHE STRING "")
 
 # Expect QNX env to be sourced, so QNX_HOST and QNX_TARGET exist
 if(NOT DEFINED ENV{QNX_HOST} OR NOT DEFINED ENV{QNX_TARGET})
@@ -30,9 +30,9 @@ else()
 endif()
 
 # Compilers (use qcc/q++ so the -V variant selects the right GCC/binutils under the hood)
-set(CMAKE_C_COMPILER qcc)
+set(CMAKE_C_COMPILER qcc CACHE FILEPATH "")
 set(CMAKE_C_COMPILER_TARGET ${QNX_QCC_VARIANT})
-set(CMAKE_CXX_COMPILER q++)
+set(CMAKE_CXX_COMPILER q++ CACHE FILEPATH "")
 set(CMAKE_CXX_COMPILER_TARGET ${QNX_QCC_VARIANT})
 
 # Sysroot. For QNX, the headers/libs live under $QNX_TARGET/<arch>
@@ -40,7 +40,7 @@ set(CMAKE_CXX_COMPILER_TARGET ${QNX_QCC_VARIANT})
 #   $QNX_TARGET/aarch64le
 #   $QNX_TARGET/armle-v7
 #   $QNX_TARGET/x86_64
-set(CMAKE_SYSROOT "$ENV{QNX_TARGET}")
+set(CMAKE_SYSROOT "$ENV{QNX_TARGET}" )
 set(CMAKE_FIND_ROOT_PATH "${CMAKE_SYSROOT}" CACHE PATH "")
 set(CMAKE_PREFIX_PATH ${CMAKE_SYSROOT}/${QNX_SYSROOT_SUFFIX}; ${CMAKE_SYSROOT}/${QNX_SYSROOT_SUFFIX}/usr)
 
