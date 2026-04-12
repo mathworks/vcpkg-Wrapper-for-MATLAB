@@ -28,7 +28,8 @@ set(CMAKE_CXX_COMPILER ${CMAKE_SYSTEM_PROCESSOR}-speedgoat-linux-g++)
 
 # Sysroot
 string(REPLACE "\"" "" SDKTARGETSYSROOT "$ENV{SDKTARGETSYSROOT}")
-set(CMAKE_SYSROOT "${SDKTARGETSYSROOT}")
+set(CMAKE_SYSROOT "${SDKTARGETSYSROOT}" CACHE PATH "")
+set(CMAKE_FIND_ROOT_PATH "${CMAKE_SYSROOT}" CACHE PATH "")
 
 # Optimize for target architecture
 if(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
@@ -39,11 +40,16 @@ else()
     message(FATAL_ERROR "Unsupported processor architecture='${CMAKE_SYSTEM_PROCESSOR}'. Use aarch64|x86_64.")
 endif()
 
-# Make sure CMake finds things in the sysroot first
-set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM BOTH)
-set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY NEVER)
-set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE BOTH)
-set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH)
+# Host tools only (executables used during configure/build)
+set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+
+# Target artifacts only (resolved via sysroot / root path)
+set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
+
+# Avoid try_run / executable checks during configuration on a cross build.
+set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 
 # Set fPIC flag
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
