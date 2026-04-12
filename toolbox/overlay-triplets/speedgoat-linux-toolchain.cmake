@@ -51,5 +51,3 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
 # Avoid try_run / executable checks during configuration on a cross build.
 set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 
-# Set fPIC flag
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
