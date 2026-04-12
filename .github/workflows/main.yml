@@ -8,6 +8,8 @@ on:
     paths-ignore:
       - 'README.md'
       - '.github/workflows/release.yml'
+      - 'toolbox/overlay-triplets'
+      - 'toolbox/*.mlx'
       
   pull_request:
     branches: [ "main" ]
