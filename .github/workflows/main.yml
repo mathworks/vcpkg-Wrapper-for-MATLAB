@@ -6,7 +6,7 @@ on:
   push:
     branches: [ "main" ]
     paths-ignore:
-      - 'README.md'
+      - '*.md'
       - '.github/workflows/release.yml'
       - 'toolbox/overlay-triplets/**'
       - 'toolbox/*.mlx'
