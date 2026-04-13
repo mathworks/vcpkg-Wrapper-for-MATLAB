@@ -40,8 +40,10 @@ set(CMAKE_CXX_COMPILER_TARGET ${QNX_QCC_VARIANT})
 #   $QNX_TARGET/aarch64le
 #   $QNX_TARGET/armle-v7
 #   $QNX_TARGET/x86_64
-set(CMAKE_SYSROOT "$ENV{QNX_TARGET}" CACHE PATH "")
-set(CMAKE_FIND_ROOT_PATH "${CMAKE_SYSROOT}" CACHE PATH "")
+set(CMAKE_SYSROOT $ENV{QNX_TARGET} CACHE PATH "")
+set(CMAKE_FIND_ROOT_PATH ${CMAKE_SYSROOT} CACHE PATH "")
+
+# Add additional paths
 set(CMAKE_PREFIX_PATH ${CMAKE_SYSROOT}/${QNX_SYSROOT_SUFFIX}; ${CMAKE_SYSROOT}/${QNX_SYSROOT_SUFFIX}/usr)
 
 # Host tools only (executables used during configure/build)
@@ -52,15 +54,12 @@ set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
 
-# Avoid try_run / executable checks during configuration on a cross build.
-set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
-
 # Optional: if some projects try to use GNU ar/ranlib/nm directly, point to QNX tools
 # But usually qcc/q++ + -V variant is enough.
 # set(CMAKE_AR      "nto${QNX_SYSROOT_SUFFIX}-ar")
 # set(CMAKE_RANLIB  "nto${QNX_SYSROOT_SUFFIX}-ranlib")
 # set(CMAKE_NM      "nto${QNX_SYSROOT_SUFFIX}-nm")
 
-# QNX doesn’t use glibc; some ports may need feature tests or POSIX settings.
+# QNX doesn't use glibc; some ports may need feature tests or POSIX settings.
 add_compile_definitions(_QNX_SOURCE)
 add_compile_definitions(__GNU__)
