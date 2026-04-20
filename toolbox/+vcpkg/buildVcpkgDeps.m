@@ -6,6 +6,7 @@ arguments
     manifestFolder char {mustBeFolder}
     vpckgArguments {mustBeText} = {};
     options.buildHostOnly = false;
+    options.debug = false;
 end
 
 if ~iscellstr(vpckgArguments) && ~isstring(vpckgArguments)
@@ -97,11 +98,18 @@ end
 % Add vcpkg to path
 addToSystemPath(getenv('VCPKG_ROOT'));
 
+% Prepare debug mode
+if options.debug
+    debugArg = ' --debug ';
+else
+    debugArg = '';
+end
+
 % Build up vcpkg full command
 vcpkgCmd = ['cd ', manifestFolder, ' ',...
     targetEnvRootBat,...
     ' && vcpkg install ',targetTriplet,' --host-triplet ', vcpkg.getHostTriplet,...
-    ' --overlay-triplets "', fullfile(vcpkg.getToolboxRoot,'overlay-triplets'), '" ', strjoin(vpckgArguments,' ')];
+    ' --overlay-triplets "', fullfile(vcpkg.getToolboxRoot,'overlay-triplets'), '" ', strjoin(vpckgArguments,' '), debugArg];
 
 if hasMSVC
     vcpkgCmd = [msvcSetupCmd, ' && ', vcpkgCmd];
