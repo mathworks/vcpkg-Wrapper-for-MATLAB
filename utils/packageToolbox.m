@@ -17,7 +17,7 @@ toolboxOptions.AuthorCompany = "The MathWorks";
 toolboxOptions.ToolboxGettingStartedGuide = "toolbox/gettingStarted.mlx";
 toolboxOptions.OutputFile = sprintf("vcpkg-wrapper-toolbox-v%s.mltbx", toolboxVersion.string);
 
-toolboxOptions.MinimumMatlabRelease = "R2019b";
+toolboxOptions.MinimumMatlabRelease = "R2020b";
 % toolboxOptions.MaximumMatlabRelease = "R2023a"; % Won't limit maximum MATLAB release
 toolboxOptions.SupportedPlatforms.Glnxa64 = true;
 toolboxOptions.SupportedPlatforms.Maci64 = true;
