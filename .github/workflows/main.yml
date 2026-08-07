@@ -8,7 +8,6 @@ on:
     paths-ignore:
       - '*.md'
       - '.github/workflows/release.yml'
-      - 'toolbox/overlay-triplets/**'
       - 'toolbox/*.mlx'
       
   pull_request:
@@ -51,3 +50,29 @@ jobs:
           # Optional category for the results
           # Used to differentiate multiple results for one commit
           category: matlab
+
+      - name: Upload Test Results
+        if: success() || failure()
+        uses: actions/upload-artifact@v7
+        with:
+          if-no-files-found: error
+          path: testResults.xml
+
+  publish-test-results:
+    needs: check-and-test
+    runs-on: ubuntu-latest
+    permissions:
+      checks: write
+      # only needed unless run with comment_mode: off
+      pull-requests: write
+    if: (!cancelled())
+    steps:
+      - name: Download Test Results
+        uses: actions/download-artifact@v8
+        with:
+          path: artifacts
+
+      - name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: "artifacts/**/*.xml"
