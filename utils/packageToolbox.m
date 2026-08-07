@@ -9,15 +9,15 @@ toolboxOptions = matlab.addons.toolbox.ToolboxOptions("toolbox", "53137c5a-1016-
 
 toolboxOptions.ToolboxName = "vcpkg Wrapper for MATLAB";
 toolboxOptions.ToolboxVersion = toolboxVersion.string;
-toolboxOptions.Summary = "This toolbox wraps vcpkg to enable easy packet management in MATLAB projects.";
+toolboxOptions.Summary = "This toolbox wraps vcpkg to enable easy package management in MATLAB projects.";
 toolboxOptions.AuthorName = 'Pablo Romero';
 toolboxOptions.AuthorEmail = "promero@mathworks.com";
 toolboxOptions.AuthorCompany = "The MathWorks";
 % toolboxOptions.ToolboxImageFile = "toolbox/toolboxIcon.jpeg";
 toolboxOptions.ToolboxGettingStartedGuide = "toolbox/gettingStarted.mlx";
-toolboxOptions.OutputFile = sprintf("vcpkg-wrapper-toolbox-v%s.mltbx",toolboxVersion.string);
+toolboxOptions.OutputFile = sprintf("vcpkg-wrapper-toolbox-v%s.mltbx", toolboxVersion.string);
 
-toolboxOptions.MinimumMatlabRelease = "R2019b"; % R2024b is minimum required because of "arguments"
+toolboxOptions.MinimumMatlabRelease = "R2019b";
 % toolboxOptions.MaximumMatlabRelease = "R2023a"; % Won't limit maximum MATLAB release
 toolboxOptions.SupportedPlatforms.Glnxa64 = true;
 toolboxOptions.SupportedPlatforms.Maci64 = true;
