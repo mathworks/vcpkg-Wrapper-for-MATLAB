@@ -65,7 +65,7 @@ jobs:
       checks: write
       # only needed unless run with comment_mode: off
       pull-requests: write
-    if: !cancelled()
+    if: (!cancelled())
     steps:
       - name: Download Test Results
         uses: actions/download-artifact@v8
