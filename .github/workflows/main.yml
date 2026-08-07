@@ -36,10 +36,10 @@ jobs:
             .buildtool
 
       - name: Set up MATLAB
-        uses: matlab-actions/setup-matlab@v2
+        uses: matlab-actions/setup-matlab@v3
 
       - name: Run MATLAB build
-        uses: matlab-actions/run-build@v2
+        uses: matlab-actions/run-build@v3
 
       - name: Upload SARIF file
         if: success() || failure()
