@@ -9,7 +9,7 @@ The wrapper toolbox figures out the host and target triplets as well as the comp
 Download toolbox installer from releases in GitHub or File Exchange and install in MATLAB.
 
 ### MathWorks Products (https://www.mathworks.com)
-Requires MATLAB release R2019b or newer
+Requires MATLAB release R2020b or newer
 - [MATLAB&reg;](https://www.mathworks.com/products/matlab.html)
 
 ### 3rd Party Products
