@@ -20,6 +20,7 @@ on:
 jobs:
   check-and-test:
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
@@ -31,7 +32,7 @@ jobs:
       - name: Cache MATLAB build files
         uses: actions/cache@v5
         with:
-          key: matlab-buildtool
+          key: matlab-buildtool-${{ runner.os }}
           path: |
             .buildtool
 
@@ -49,17 +50,44 @@ jobs:
           sarif_file: code-issues/results.sarif
           # Optional category for the results
           # Used to differentiate multiple results for one commit
-          category: matlab
+          category: matlab-${{ runner.os }}
 
       - name: Upload Test Results
         if: success() || failure()
         uses: actions/upload-artifact@v7
         with:
+          name: test-results-${{ runner.os }}
           if-no-files-found: error
           path: testResults.xml
 
+  compatibility-r2020b:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v6
+
+      - name: Set up MATLAB R2020b
+        uses: matlab-actions/setup-matlab@v3
+        with:
+          release: R2020b
+
+      - name: Run compatibility tests
+        uses: matlab-actions/run-tests@v3
+        with:
+          source-folder: toolbox
+          select-by-folder: tests
+          test-results-junit: r2020b-test-results.xml
+
+      - name: Upload compatibility test results
+        if: success() || failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results-r2020b
+          if-no-files-found: error
+          path: r2020b-test-results.xml
+
   publish-test-results:
-    needs: check-and-test
+    needs: [check-and-test, compatibility-r2020b]
     runs-on: ubuntu-latest
     permissions:
       checks: write
