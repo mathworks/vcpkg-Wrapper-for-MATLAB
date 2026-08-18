@@ -20,7 +20,7 @@ jobs:
       - name: Cache MATLAB build files
         uses: actions/cache@v6
         with:
-          key: matlab-buildtool
+          key: matlab-buildtool-${{ runner.os }}
           path: |
             .buildtool
 
