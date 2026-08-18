@@ -13,7 +13,11 @@ if(NOT DEFINED ENV{QNX_HOST} OR NOT DEFINED ENV{QNX_TARGET})
 endif()
 
 # Allow caller to choose architecture; default to x86_64
-set(CMAKE_SYSTEM_PROCESSOR "x86_64" CACHE STRING "QNX target arch (aarch64|armv7|x86_64)")
+if(DEFINED QNX_ARCH)
+    set(CMAKE_SYSTEM_PROCESSOR "${QNX_ARCH}" CACHE STRING "QNX target arch (aarch64|armv7|x86_64)")
+else()
+    set(CMAKE_SYSTEM_PROCESSOR "x86_64" CACHE STRING "QNX target arch (aarch64|armv7|x86_64)")
+endif()
 
 # Map arch → qcc variant string and sysroot suffix
 if(CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
