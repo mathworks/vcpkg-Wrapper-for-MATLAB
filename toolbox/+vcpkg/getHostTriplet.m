@@ -6,23 +6,23 @@ function triplet = getHostTriplet
 
 % Copyright 2025 The MathWorks, Inc.
 
-cfg = mex.getCompilerConfigurations('C++', 'Selected');
-
-if isempty(cfg)
-    error('vcpkg:getHostTriplet:CompilerNotFound', ...
-        ['No compiler was found for this MATLAB installation. Please run ', ...
-        '"mex -setup" on the MATLAB command window first, and install a ', ...
-        'supported C/C++ compiler.']);
-end
-
 if ispc
-    if contains(cfg.ShortName, 'MSVC', 'IgnoreCase', true)
+    compilerConfiguration = mex.getCompilerConfigurations('C++', 'Selected');
+
+    if isempty(compilerConfiguration) && isfolder(getenv('MW_MINGW64_LOC'))
+        triplet = 'x64-mingw-static';
+    elseif isempty(compilerConfiguration)
+        error('vcpkg:getHostTriplet:CompilerNotFound', ...
+            ['No compiler was found for this MATLAB installation. Please run ', ...
+            '"mex -setup" on the MATLAB command window first, and install a ', ...
+            'supported C/C++ compiler.']);
+    elseif contains(compilerConfiguration.ShortName, 'MSVC', 'IgnoreCase', true)
         triplet = 'x64-windows-static-md';
-    elseif contains(cfg.ShortName, 'mingw', 'IgnoreCase', true)
+    elseif contains(compilerConfiguration.ShortName, 'mingw', 'IgnoreCase', true)
         triplet = 'x64-mingw-static';
     else
         error('vcpkg:getHostTriplet:UnsupportedCompiler', ...
-            'Compiler %s not supported.', cfg.Name);
+            'Compiler %s not supported.', compilerConfiguration.Name);
     end
 elseif isunix && ~ismac
     triplet = 'x64-linux';
