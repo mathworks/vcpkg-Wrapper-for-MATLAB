@@ -19,10 +19,16 @@ toolboxOptions.OutputFile = sprintf("vcpkg-wrapper-toolbox-v%s.mltbx", toolboxVe
 
 toolboxOptions.MinimumMatlabRelease = "R2020b";
 % toolboxOptions.MaximumMatlabRelease = "R2023a"; % Won't limit maximum MATLAB release
-toolboxOptions.SupportedPlatforms.Glnxa64 = true;
-toolboxOptions.SupportedPlatforms.Maci64 = true;
-toolboxOptions.SupportedPlatforms.MatlabOnline = false;
-toolboxOptions.SupportedPlatforms.Win64 = true;
+supportedPlatforms = toolboxOptions.SupportedPlatforms;
+supportedPlatforms.Glnxa64 = true;
+if isfield(supportedPlatforms, 'Mac')
+    supportedPlatforms.Mac = true;
+else
+    supportedPlatforms.Maci64 = true;
+end
+supportedPlatforms.MatlabOnline = false;
+supportedPlatforms.Win64 = true;
+toolboxOptions.SupportedPlatforms = supportedPlatforms;
 
 % Generate toolbox
 matlab.addons.toolbox.packageToolbox(toolboxOptions);
