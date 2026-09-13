@@ -5,8 +5,14 @@ set(VCPKG_CMAKE_SYSTEM_NAME Linux)
 set(VCPKG_CRT_LINKAGE dynamic)
 set(VCPKG_LIBRARY_LINKAGE static) # common for embedded
 
-# Pass environment variables
-set(VCPKG_ENV_PASSTHROUGH SDKTARGETSYSROOT;PATH)
+# Preserve the SDK paths used to locate the relocatable cross-compilers.
+# On Windows, the setup script exports these paths in 8.3 form, which keeps
+# GCC's internally constructed header paths below the legacy MAX_PATH limit.
+set(VCPKG_ENV_PASSTHROUGH
+    OECORE_NATIVE_SYSROOT
+    PATH
+    SDKTARGETSYSROOT
+    TARGET_PREFIX)
 
 # Absolute path to the chainloaded toolchain
 set(VCPKG_CHAINLOAD_TOOLCHAIN_FILE
