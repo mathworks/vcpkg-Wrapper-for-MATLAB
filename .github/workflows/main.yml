@@ -58,7 +58,7 @@ jobs:
         with:
           name: test-results-${{ runner.os }}
           if-no-files-found: error
-          path: testResults.xml
+          path: results/testResults.xml
 
   compatibility-r2020b:
     runs-on: ubuntu-22.04
