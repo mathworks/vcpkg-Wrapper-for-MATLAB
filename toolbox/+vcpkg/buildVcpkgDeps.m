@@ -174,7 +174,13 @@ if hasMSVC
 end
 
 % Run vcpkg command
-status = system(vcpkgCmd, '-echo');
+if isunix && ~ismac
+    % Use system libraries in the child process instead of MATLAB libraries.
+    % SDK setup in vcpkgCmd can still establish its own library paths.
+    status = system(vcpkgCmd, '-echo', 'LD_LIBRARY_PATH', missing);
+else
+    status = system(vcpkgCmd, '-echo');
+end
 assert(status == 0, 'Error running vcpkg command');
 
 end
