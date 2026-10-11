@@ -52,11 +52,6 @@ if ~isempty(experimentalArguments)
         strjoin(experimentalArguments, ', '));
 end
 
-if isunix && ~ismac && any(strcmp(experimentalArguments, '--x-install-root'))
-    error('vcpkg:buildVcpkgDeps:InstallRootNotSupportedOnLinux', ...
-        ['--x-install-root does not work as expected on Linux. ', ...
-        'See https://github.com/microsoft/vcpkg/issues/48102.']);
-end
 
 %% Prepare host
 triplet = vcpkg.getHostTriplet(options.buildDynamic, options.buildRelease);
