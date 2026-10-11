@@ -22,8 +22,9 @@ function buildVcpkgDeps(manifestFolder, vpckgArguments, options)
 %   buildVcpkgDeps(..., buildHostOnly=TF) builds only host dependencies
 %   when TF is true. The default is false.
 %
-%   buildVcpkgDeps(..., debug=TF) enables vcpkg debug output when TF is
-%   true. The default is false.
+%   buildVcpkgDeps(..., vcpkgDebug=TF) enables vcpkg diagnostic output
+%   with the --debug flag when TF is true. The default is false. Library
+%   build configuration is selected separately with buildRelease.
 %
 %   See also getHostTriplet, getTargetTriplet
 
@@ -35,7 +36,7 @@ arguments
     options.buildDynamic (1,1) logical = true;
     options.buildRelease (1,1) logical = true;
     options.buildHostOnly (1,1) logical = false;
-    options.debug (1,1) logical = false;
+    options.vcpkgDebug (1,1) logical = false;
 end
 
 if ~iscellstr(vpckgArguments) && ~isstring(vpckgArguments)
@@ -140,18 +141,18 @@ targetTriplet = ['--triplet ', targetTriplet];
 % Add vcpkg to path
 addToSystemPath(getenv('VCPKG_ROOT'));
 
-% Prepare debug mode
-if options.debug
-    debugArg = ' --debug ';
+% Enable vcpkg diagnostics
+if options.vcpkgDebug
+    vcpkgDebugArg = ' --debug ';
 else
-    debugArg = '';
+    vcpkgDebugArg = '';
 end
 
 % Build up vcpkg full command
 vcpkgCmd = ['cd ', manifestFolder, ' ',...
     targetEnvRootBat,...
     ' && vcpkg install ',targetTriplet,' --host-triplet ', triplet,...
-    ' --overlay-triplets "', fullfile(vcpkg.getToolboxRoot,'overlay-triplets'), '" ', strjoin(vpckgArguments,' '), debugArg];
+    ' --overlay-triplets "', fullfile(vcpkg.getToolboxRoot,'overlay-triplets'), '" ', strjoin(vpckgArguments,' '), vcpkgDebugArg];
 
 if hasMSVC
     vcpkgCmd = [msvcSetupCmd, ' && ', vcpkgCmd];

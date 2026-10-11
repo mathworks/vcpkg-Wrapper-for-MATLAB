@@ -69,7 +69,16 @@ vcpkg.getHostTriplet(false, false)
 
 On MSVC, static Debug/Release builds use `x64-windows-static-md` when available, otherwise the built-in `x64-windows-static` triplet, which also uses a static C runtime.
 
-The existing QNX and Speedgoat target overlays always build static Release-only libraries for either `buildRelease` value. The `debug` option controls vcpkg diagnostic output independently of library build mode. No host overlay triplets are added by the toolbox.
+The existing QNX and Speedgoat target overlays always build static Release-only libraries for either `buildRelease` value. No host overlay triplets are added by the toolbox.
+
+### vcpkg diagnostics
+Set `vcpkgDebug` to `true` to pass `--debug` to vcpkg and enable its diagnostic output. The default is `false`. Library build configuration is controlled separately by `buildRelease`.
+
+```matlab
+vcpkg.buildVcpkgDeps('path/to/manifest', 'vcpkgDebug', true)
+```
+
+The option previously named `debug` is now named `vcpkgDebug`; update existing calls accordingly.
 
 ## Testing
 Open `VcpkgToolbox.prj` in MATLAB before running tests. `buildfile.m` is the entry point:
