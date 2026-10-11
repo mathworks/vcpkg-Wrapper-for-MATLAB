@@ -43,6 +43,21 @@ if ~iscellstr(vpckgArguments) && ~isstring(vpckgArguments)
     vpckgArguments = cellstr(vpckgArguments);
 end
 
+experimentalArguments = unique(regexp(char(strjoin(vpckgArguments, ' ')), ...
+    '(?<!\S)--x-(?:install|manifest|packages)-root(?==|\s|$)', ...
+    'match'), 'stable');
+if ~isempty(experimentalArguments)
+    warning('vcpkg:buildVcpkgDeps:ExperimentalArgument', ...
+        'The following arguments use experimental vcpkg features: %s.', ...
+        strjoin(experimentalArguments, ', '));
+end
+
+if isunix && ~ismac && any(strcmp(experimentalArguments, '--x-install-root'))
+    error('vcpkg:buildVcpkgDeps:InstallRootNotSupportedOnLinux', ...
+        ['--x-install-root does not work as expected on Linux. ', ...
+        'See https://github.com/microsoft/vcpkg/issues/48102.']);
+end
+
 %% Prepare host
 triplet = vcpkg.getHostTriplet(options.buildDynamic, options.buildRelease);
 hasMSVC = false;
