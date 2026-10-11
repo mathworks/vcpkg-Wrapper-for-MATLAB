@@ -3,6 +3,7 @@ classdef vcpkgIntegrationTest < matlab.unittest.TestCase
 
     properties (TestParameter)
         buildDynamic = struct('dynamic', true, 'static', false);
+        buildRelease = struct('releaseOnly', true, 'debugAndRelease', false);
     end
 
     methods (TestMethodSetup)
@@ -20,37 +21,65 @@ classdef vcpkgIntegrationTest < matlab.unittest.TestCase
     end
 
     methods (Test, TestTags = {'Integration'})
-        function defaultsToDynamicHostLibraries(testCase)
-            vcpkg.buildVcpkgDeps('manifest', '--x-install-root=../installed', 'buildHostOnly', true);
+        function convertsNumericBuildOptions(testCase, buildDynamic, buildRelease)
+            triplet = vcpkg.getHostTriplet(buildDynamic, buildRelease);
+            releaseOnly = endsWith(triplet, '-release');
 
-            installFolder = fullfile('installed', vcpkg.getHostTriplet(true));
+            vcpkg.buildVcpkgDeps('manifest', '--x-install-root=../installed', ...
+                'buildHostOnly', true, 'buildDynamic', 2*double(buildDynamic), ...
+                'buildRelease', 2*double(buildRelease));
+
+            installFolder = fullfile('installed', triplet);
             testCase.verifyTrue(isfile(fullfile(installFolder, 'include', 'fmt', 'format.h')));
-            testCase.verifyNotEmpty(findSharedLibraries(installFolder));
+            testCase.verifyNotEmpty(findLinkLibraries(installFolder));
+            testCase.verifyEqual(~isempty(findSharedLibraries(installFolder)), buildDynamic);
+            testCase.verifyEqual(~isempty(findLinkLibraries(fullfile(installFolder, 'debug'))), ~releaseOnly);
         end
 
-        function buildsHostLibraries(testCase, buildDynamic)
-            vcpkg.buildVcpkgDeps('manifest', '--x-install-root=../installed', ...
-                'buildHostOnly', true, 'buildDynamic', buildDynamic);
+        function defaultsToDynamicHostLibraries(testCase)
+            triplet = vcpkg.getHostTriplet(true);
+            releaseOnly = endsWith(triplet, '-release');
 
-            installFolder = fullfile('installed', vcpkg.getHostTriplet(buildDynamic));
+            vcpkg.buildVcpkgDeps('manifest', '--x-install-root=../installed', 'buildHostOnly', true);
+
+            installFolder = fullfile('installed', triplet);
+            testCase.verifyTrue(isfile(fullfile(installFolder, 'include', 'fmt', 'format.h')));
+            testCase.verifyNotEmpty(findSharedLibraries(installFolder));
+            testCase.verifyEqual(~isempty(findLinkLibraries(fullfile(installFolder, 'debug'))), ~releaseOnly);
+            testCase.verifyEqual(~isempty(findSharedLibraries(fullfile(installFolder, 'debug'))), ~releaseOnly);
+        end
+
+        function buildsHostLibraries(testCase, buildDynamic, buildRelease)
+            triplet = vcpkg.getHostTriplet(buildDynamic, buildRelease);
+            releaseOnly = endsWith(triplet, '-release');
+
+            vcpkg.buildVcpkgDeps('manifest', '--x-install-root=../installed', ...
+                'buildHostOnly', true, 'buildDynamic', buildDynamic, 'buildRelease', buildRelease);
+
+            installFolder = fullfile('installed', triplet);
             testCase.verifyTrue(isfile(fullfile(installFolder, 'include', 'fmt', 'format.h')));
             testCase.verifyEqual(~isempty(findSharedLibraries(installFolder)), buildDynamic);
             testCase.verifyNotEmpty(findLinkLibraries(installFolder));
+            testCase.verifyEqual(~isempty(findLinkLibraries(fullfile(installFolder, 'debug'))), ~releaseOnly);
+            testCase.verifyEqual(~isempty(findSharedLibraries(fullfile(installFolder, 'debug'))), ...
+                buildDynamic && ~releaseOnly);
         end
     end
 
     methods (Test, TestTags = {'TargetIntegration'})
-        function buildsStaticTargetLibraries(testCase, buildDynamic)
+        function buildsStaticTargetLibraries(testCase, buildDynamic, buildRelease)
             targetTriplet = vcpkg.getTargetTriplet();
             testCase.assumeNotEmpty(targetTriplet, 'No supported embedded target is installed.');
 
             vcpkg.buildVcpkgDeps('manifest', '--x-install-root=../installed', ...
-                'buildDynamic', buildDynamic);
+                'buildDynamic', buildDynamic, 'buildRelease', buildRelease);
 
             installFolder = fullfile('installed', targetTriplet);
             testCase.verifyTrue(isfile(fullfile(installFolder, 'include', 'fmt', 'format.h')));
             testCase.verifyNotEmpty(findLinkLibraries(installFolder));
             testCase.verifyEmpty(findSharedLibraries(installFolder));
+            testCase.verifyEmpty(findLinkLibraries(fullfile(installFolder, 'debug')));
+            testCase.verifyEmpty(findSharedLibraries(fullfile(installFolder, 'debug')));
         end
     end
 end

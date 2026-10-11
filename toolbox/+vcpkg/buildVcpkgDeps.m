@@ -1,16 +1,23 @@
 function buildVcpkgDeps(manifestFolder, vpckgArguments, options)
 %buildVcpkgDeps - Build vcpkg manifest dependencies for the host and target
 %   buildVcpkgDeps(manifestFolder) builds dependencies from the manifest
-%   in manifestFolder. Host libraries are dynamic by default. Supported
-%   embedded targets always use static libraries. If no supported target
-%   is detected, dependencies are built for the host.
+%   in manifestFolder. Host libraries are dynamic and prefer Release-only
+%   triplets by default. Embedded targets always use static Release-only
+%   libraries. If no supported target is detected, dependencies are built
+%   for the host.
 %
 %   buildVcpkgDeps(manifestFolder, vpckgArguments) also passes additional
 %   vcpkg install arguments as text or an array of text values.
 %
 %   buildVcpkgDeps(..., buildDynamic=TF) selects dynamic host libraries
 %   when TF is true (default), or static host libraries when TF is false.
-%   TF must be a scalar logical value. Target libraries remain static.
+%   TF must be scalar and is converted to logical. Targets remain static.
+%
+%   buildVcpkgDeps(..., buildRelease=TF) selects Release-only host builds
+%   when TF is true (default), or both Debug and Release when false.
+%   TF is scalar and converted to logical. Targets stay Release-only.
+%   If a dynamic Release-only triplet is unavailable, a warning is issued
+%   and the dynamic Debug/Release triplet is used.
 %
 %   buildVcpkgDeps(..., buildHostOnly=TF) builds only host dependencies
 %   when TF is true. The default is false.
@@ -25,9 +32,10 @@ function buildVcpkgDeps(manifestFolder, vpckgArguments, options)
 arguments
     manifestFolder char {mustBeFolder}
     vpckgArguments {mustBeText} = {};
-    options.buildDynamic (1,1) {mustBeA(options.buildDynamic, 'logical')} = true;
-    options.buildHostOnly = false;
-    options.debug = false;
+    options.buildDynamic (1,1) logical = true;
+    options.buildRelease (1,1) logical = true;
+    options.buildHostOnly (1,1) logical = false;
+    options.debug (1,1) logical = false;
 end
 
 if ~iscellstr(vpckgArguments) && ~isstring(vpckgArguments)
@@ -35,7 +43,7 @@ if ~iscellstr(vpckgArguments) && ~isstring(vpckgArguments)
 end
 
 %% Prepare host
-triplet = vcpkg.getHostTriplet(options.buildDynamic);
+triplet = vcpkg.getHostTriplet(options.buildDynamic, options.buildRelease);
 hasMSVC = false;
 
 if contains(triplet,'windows')

@@ -1,19 +1,28 @@
-function triplet = getHostTriplet(buildDynamic)
+function triplet = getHostTriplet(buildDynamic, buildRelease)
 %getHostTriplet - Return the vcpkg triplet for the selected C++ compiler
-%   TRIPLET = getHostTriplet returns the dynamic vcpkg host triplet that
-%   matches the current platform and selected MATLAB C++ MEX compiler.
+%   TRIPLET = getHostTriplet returns the dynamic host triplet matching
+%   the current platform and selected MATLAB C++ MEX compiler. It prefers
+%   a Release-only triplet from vcpkg's built-in or community folders.
 %   On Windows, the selected compiler distinguishes MSVC from MinGW.
 %
 %   TRIPLET = getHostTriplet(buildDynamic) selects dynamic libraries when
 %   buildDynamic is true (default), or static libraries when false.
-%   buildDynamic must be a scalar logical value.
+%   buildDynamic must be scalar and is converted to logical.
+%
+%   TRIPLET = getHostTriplet(buildDynamic, buildRelease) selects a
+%   Release-only triplet when buildRelease is true (default). When false,
+%   the triplet builds both Debug and Release libraries. buildRelease
+%   must be scalar and is converted to logical.
+%   If a dynamic Release-only triplet is unavailable under VCPKG_ROOT,
+%   a warning is issued and the dynamic Debug/Release triplet is used.
 %
 %   See also buildVcpkgDeps, getTargetTriplet
 
 % Copyright 2025 The MathWorks, Inc.
 
 arguments
-    buildDynamic (1,1) {mustBeA(buildDynamic, 'logical')} = true;
+    buildDynamic (1,1) logical = true;
+    buildRelease (1,1) logical = true;
 end
 
 if ispc
@@ -59,6 +68,29 @@ elseif contains(triplet, 'mingw')
 elseif buildDynamic
     % Linux and macOS triplets without a suffix use static libraries
     triplet = [triplet, '-dynamic'];
+end
+
+if buildRelease
+    releaseTriplet = [triplet, '-release'];
+    tripletRoot = fullfile(getenv('VCPKG_ROOT'), 'triplets');
+    hasReleaseTriplet = isfile(fullfile(tripletRoot, [releaseTriplet, '.cmake'])) || ...
+        isfile(fullfile(tripletRoot, 'community', [releaseTriplet, '.cmake']));
+    if buildDynamic && ~contains(triplet, 'mingw') && ~hasReleaseTriplet
+        warning('vcpkg:getHostTriplet:ReleaseTripletUnavailable', ...
+            ['Release-only triplet %s was not found in VCPKG_ROOT/triplets ', ...
+            'or its community folder. Using %s for dynamic Debug and Release ', ...
+            'libraries. Set buildRelease to false to select this explicitly.'], ...
+            releaseTriplet, triplet);
+    else
+        triplet = releaseTriplet;
+    end
+elseif strcmp(triplet, 'x64-windows-static-md')
+    tripletRoot = fullfile(getenv('VCPKG_ROOT'), 'triplets');
+    hasStaticMdTriplet = isfile(fullfile(tripletRoot, [triplet, '.cmake'])) || ...
+        isfile(fullfile(tripletRoot, 'community', [triplet, '.cmake']));
+    if ~hasStaticMdTriplet
+        triplet = 'x64-windows-static';
+    end
 end
 
 end

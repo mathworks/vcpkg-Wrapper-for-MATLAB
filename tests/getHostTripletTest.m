@@ -3,29 +3,42 @@ classdef getHostTripletTest < matlab.unittest.TestCase
 
     properties (TestParameter)
         buildDynamic = struct('dynamic', true, 'static', false);
+        buildRelease = struct('releaseOnly', true, 'debugAndRelease', false);
+        convertibleFlag = struct('zero', 0, 'one', 1, 'nonzero', 2, 'negative', -1);
         invalidFlag = struct( ...
             'empty', struct('value', [], 'errorId', 'MATLAB:validation:IncompatibleSize'), ...
             'vector', struct('value', [true false], 'errorId', 'MATLAB:validation:IncompatibleSize'), ...
-            'numeric', struct('value', 1, 'errorId', 'MATLAB:validators:mustBeA'), ...
-            'character', struct('value', 'true', 'errorId', 'MATLAB:validation:IncompatibleSize'), ...
-            'string', struct('value', "false", 'errorId', 'MATLAB:validators:mustBeA'), ...
-            'cell', struct('value', {{true}}, 'errorId', 'MATLAB:validators:mustBeA'), ...
-            'nan', struct('value', NaN, 'errorId', 'MATLAB:validators:mustBeA'));
+            'numericVector', struct('value', [0 1], 'errorId', 'MATLAB:validation:IncompatibleSize'));
+    end
+
+    methods (TestMethodSetup)
+        function suppressUnavailableReleaseWarning(testCase)
+            testCase.applyFixture(matlab.unittest.fixtures.SuppressedWarningsFixture( ...
+                'vcpkg:getHostTriplet:ReleaseTripletUnavailable'));
+        end
     end
 
     methods (Test, TestTags = {'Unit'})
-        function defaultsToDynamic(testCase)
-            expected = getExpectedTriplet(true);
+        function defaultsToDynamicRelease(testCase)
+            expected = getExpectedTriplet(true, true);
 
             actual = vcpkg.getHostTriplet();
 
             testCase.verifyEqual(actual, expected);
         end
 
-        function selectsHostLinkage(testCase, buildDynamic)
-            expected = getExpectedTriplet(buildDynamic);
+        function defaultsToReleaseWithLinkage(testCase, buildDynamic)
+            expected = getExpectedTriplet(buildDynamic, true);
 
             actual = vcpkg.getHostTriplet(buildDynamic);
+
+            testCase.verifyEqual(actual, expected);
+        end
+
+        function selectsHostBuildMode(testCase, buildDynamic, buildRelease)
+            expected = getExpectedTriplet(buildDynamic, buildRelease);
+
+            actual = vcpkg.getHostTriplet(buildDynamic, buildRelease);
 
             testCase.verifyEqual(actual, expected);
         end
@@ -33,10 +46,30 @@ classdef getHostTripletTest < matlab.unittest.TestCase
         function rejectsInvalidFlag(testCase, invalidFlag)
             testCase.verifyError(@() vcpkg.getHostTriplet(invalidFlag.value), invalidFlag.errorId);
         end
+
+        function convertsLinkageFlag(testCase, convertibleFlag)
+            expected = getExpectedTriplet(logical(convertibleFlag), true);
+
+            actual = vcpkg.getHostTriplet(convertibleFlag);
+
+            testCase.verifyEqual(actual, expected);
+        end
+
+        function convertsReleaseFlag(testCase, convertibleFlag)
+            expected = getExpectedTriplet(true, logical(convertibleFlag));
+
+            actual = vcpkg.getHostTriplet(true, convertibleFlag);
+
+            testCase.verifyEqual(actual, expected);
+        end
+
+        function rejectsInvalidReleaseFlag(testCase, invalidFlag)
+            testCase.verifyError(@() vcpkg.getHostTriplet(true, invalidFlag.value), invalidFlag.errorId);
+        end
     end
 end
 
-function triplet = getExpectedTriplet(buildDynamic)
+function triplet = getExpectedTriplet(buildDynamic, buildRelease)
 if ispc
     compiler = mex.getCompilerConfigurations('C++', 'Selected');
     if isempty(compiler) || contains(compiler.ShortName, 'mingw', 'IgnoreCase', true)
@@ -52,4 +85,20 @@ else
     triplets = {'x64-linux', 'x64-linux-dynamic'};
 end
 triplet = triplets{1 + double(buildDynamic)};
+if buildRelease
+    releaseTriplet = [triplet, '-release'];
+    tripletFolder = fullfile(getenv('VCPKG_ROOT'), 'triplets');
+    hasReleaseTriplet = isfile(fullfile(tripletFolder, [releaseTriplet, '.cmake'])) || ...
+        isfile(fullfile(tripletFolder, 'community', [releaseTriplet, '.cmake']));
+    if ~buildDynamic || contains(triplet, 'mingw') || hasReleaseTriplet
+        triplet = releaseTriplet;
+    end
+elseif strcmp(triplet, 'x64-windows-static-md')
+    tripletFolder = fullfile(getenv('VCPKG_ROOT'), 'triplets');
+    hasStaticMdTriplet = isfile(fullfile(tripletFolder, [triplet, '.cmake'])) || ...
+        isfile(fullfile(tripletFolder, 'community', [triplet, '.cmake']));
+    if ~hasStaticMdTriplet
+        triplet = 'x64-windows-static';
+    end
+end
 end
