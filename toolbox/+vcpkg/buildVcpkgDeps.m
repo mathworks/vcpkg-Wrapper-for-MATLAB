@@ -60,10 +60,22 @@ else
             arch = 'aarch64';
         end
 
+        % Get Speedgoat I/O Blockset paths
+        if isMATLABReleaseOlderThan('R2026b')
+            sgHWConfigObj = slrealtime.internal.HardwareConfig.getHWConfigObject();
+        else
+            [sgHWConfigObj, ~] = slrealtime.internal.HardwareConfig.getHWConfigObjectByName('Speedgoat I/O Blockset');
+        end
+        hasSpeedgoatPath = ~isempty(sgHWConfigObj);
+
+        % Error out if no compilation path is available
+        if ~hasSpeedgoatPath
+            error(message('slrealtime:hwconfig:noAddOnsInstalled'));
+        end
+
         % Yocto cc specific implementation
         try
-            hwConfigObj = slrealtime.internal.HardwareConfig.getHWConfigObject();
-            CCPath = hwConfigObj.getToolchainPath(arch);
+            CCPath = sgHWConfigObj.getToolchainPath(arch);
         catch ME
             error(message('slrealtime:utils:toolChainError', ME.message));
         end
