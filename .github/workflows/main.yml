@@ -61,7 +61,7 @@ jobs:
         with:
           name: test-results-${{ runner.os }}
           if-no-files-found: error
-          path: results/testResults.xml
+          path: results/*.xml
 
   compatibility-r2020b:
     runs-on: ubuntu-22.04
@@ -79,6 +79,7 @@ jobs:
         with:
           source-folder: toolbox
           select-by-folder: tests
+          select-by-tag: Unit
           test-results-junit: r2020b-test-results.xml
 
       - name: Upload compatibility test results

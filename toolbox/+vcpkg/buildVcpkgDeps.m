@@ -1,10 +1,31 @@
 function buildVcpkgDeps(manifestFolder, vpckgArguments, options)
+%buildVcpkgDeps - Build vcpkg manifest dependencies for the host and target
+%   buildVcpkgDeps(manifestFolder) builds dependencies from the manifest
+%   in manifestFolder. Host libraries are dynamic by default. Supported
+%   embedded targets always use static libraries. If no supported target
+%   is detected, dependencies are built for the host.
+%
+%   buildVcpkgDeps(manifestFolder, vpckgArguments) also passes additional
+%   vcpkg install arguments as text or an array of text values.
+%
+%   buildVcpkgDeps(..., buildDynamic=TF) selects dynamic host libraries
+%   when TF is true (default), or static host libraries when TF is false.
+%   TF must be a scalar logical value. Target libraries remain static.
+%
+%   buildVcpkgDeps(..., buildHostOnly=TF) builds only host dependencies
+%   when TF is true. The default is false.
+%
+%   buildVcpkgDeps(..., debug=TF) enables vcpkg debug output when TF is
+%   true. The default is false.
+%
+%   See also getHostTriplet, getTargetTriplet
 
 % Copyright 2025 The MathWorks, Inc.
 
 arguments
     manifestFolder char {mustBeFolder}
     vpckgArguments {mustBeText} = {};
+    options.buildDynamic (1,1) {mustBeA(options.buildDynamic, 'logical')} = true;
     options.buildHostOnly = false;
     options.debug = false;
 end
@@ -14,7 +35,7 @@ if ~iscellstr(vpckgArguments) && ~isstring(vpckgArguments)
 end
 
 %% Prepare host
-triplet = vcpkg.getHostTriplet;
+triplet = vcpkg.getHostTriplet(options.buildDynamic);
 hasMSVC = false;
 
 if contains(triplet,'windows')
@@ -37,9 +58,12 @@ targetEnvRootBat = '';
 
 % Figure out target triplet if required
 if options.buildHostOnly
-    targetTriplet = '';
+    targetTriplet = triplet;
 else
     targetTriplet = vcpkg.getTargetTriplet;
+    if isempty(targetTriplet)
+        targetTriplet = triplet;
+    end
 
     if contains(targetTriplet, 'qnx', 'IgnoreCase', true)
         % Using QNX with Simulink Real-Time Target Support Package
@@ -98,12 +122,10 @@ else
             error('Current host OS is still not supported.');
         end
     end
-
-    % Prepend --triplet argument if target triplet has an actual value
-    if ~isempty(targetTriplet)
-        targetTriplet = ['--triplet ', targetTriplet];
-    end
 end
+
+% Select the dependency triplet explicitly, including for host builds
+targetTriplet = ['--triplet ', targetTriplet];
 
 %% Setup and run vcpkg
 
@@ -120,7 +142,7 @@ end
 % Build up vcpkg full command
 vcpkgCmd = ['cd ', manifestFolder, ' ',...
     targetEnvRootBat,...
-    ' && vcpkg install ',targetTriplet,' --host-triplet ', vcpkg.getHostTriplet,...
+    ' && vcpkg install ',targetTriplet,' --host-triplet ', triplet,...
     ' --overlay-triplets "', fullfile(vcpkg.getToolboxRoot,'overlay-triplets'), '" ', strjoin(vpckgArguments,' '), debugArg];
 
 if hasMSVC
