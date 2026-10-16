@@ -122,9 +122,10 @@ jobs:
           release: R2024b
 
       - name: Build MPM and toolbox artifacts
-        uses: matlab-actions/run-command@v3
+        uses: matlab-actions/run-build@v3
         with:
-          command: p = openProject(pwd); plan = buildfile; run(plan, "release", Prune=["check", "test", "packagingTest"])
+          tasks: release
+          build-options: -prune check -prune test -prune packagingTest
 
       - name: Archive MPM and toolbox artifacts
         uses: actions/upload-artifact@v7
