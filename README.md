@@ -188,12 +188,12 @@ It stages the entire `toolbox` hierarchy under ignored `work`, validates the MPM
 definition, and cleans the staging folder after packaging. Build helpers, tests,
 CI files, and MATLAB project metadata are not shipped.
 
-GitHub CI retains the cross-platform runtime checks and R2020b unit test job,
-adds packaging tests, and archives both formats after a successful test run.
-The archive job builds on R2024b and prunes checks already completed by the
-upstream jobs. On a `v*` tag, both artifacts receive that tag's version. The
-release workflow waits for CI and publishes those archived files as GitHub release
-assets. Neither workflow publishes to an MPM repository or File Exchange.
+`main.yml` runs the default build tasks for cross-platform runtime and packaging
+verification, retains the R2020b unit test job, and publishes test results.
+On a `v*` tag, `release.yml` waits for CI, then explicitly runs the `release` task
+on R2024b to generate both formats with that tag's version. It prunes checks
+already completed by CI, archives both artifacts, and publishes them as GitHub
+release assets. Neither workflow publishes to an MPM repository or File Exchange.
 
 Runtime compatibility remains R2020b+, while MPM installation and artifact
 authoring require R2024b+. The existing desktop Windows, Linux, and macOS support
