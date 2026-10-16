@@ -1,6 +1,7 @@
 code-issues
 work
 results
+/release/
 
 # Autosave files
 *.asv
@@ -17,7 +18,6 @@ results
 
 # Packaged app and toolbox files
 *.mlappinstall
-*.mltbx
 
 # Deployable archives
 *.ctf
@@ -38,4 +38,3 @@ codegen/
 
 # buildtool cache folder
 .buildtool/
-
