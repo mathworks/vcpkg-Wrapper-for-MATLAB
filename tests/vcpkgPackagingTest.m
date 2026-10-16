@@ -122,8 +122,22 @@ end
 function verifyContents(testCase, mpmFolder, installedRoot)
 sourceRoot = fullfile(testCase.RootFolder, 'toolbox');
 sourceFiles = relativeFiles(sourceRoot);
-testCase.verifyEqual(relativeFiles(mpmFolder), sourceFiles);
-testCase.verifyEmpty(setdiff(sourceFiles, relativeFiles(installedRoot)));
+packagedFiles = sort([sourceFiles, "README.md"]);
+testCase.verifyEqual(relativeFiles(mpmFolder), packagedFiles);
+testCase.verifyEmpty(setdiff(packagedFiles, relativeFiles(installedRoot)));
+readmeFile = fullfile(testCase.RootFolder, 'README.md');
+testCase.verifyEqual(readBytes(fullfile(mpmFolder, 'README.md')), readBytes(readmeFile));
+testCase.verifyEqual(readBytes(fullfile(installedRoot, 'README.md')), readBytes(readmeFile));
+metadata = jsondecode(fileread(fullfile(mpmFolder, 'resources', 'mpackage.json')));
+if isMATLABReleaseOlderThan('R2026b')
+    testCase.verifyEqual(metadata.description, fileread(readmeFile));
+else
+    pkg = matlab.mpm.Package(mpmFolder);
+    testCase.verifyEqual(string(metadata.readme), "README.md");
+    testCase.verifyEqual(string(metadata.schemaVersion), "1.2.0");
+    testCase.verifyFalse(isfield(metadata, 'description'));
+    testCase.verifyEqual(string(pkg.Readme), "README.md");
+end
 unchangedFiles = setdiff(sourceFiles, 'resources/mpackage.json');
 for file = unchangedFiles
     testCase.verifyEqual(readBytes(fullfile(mpmFolder, file)), ...

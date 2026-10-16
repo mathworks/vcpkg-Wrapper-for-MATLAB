@@ -37,7 +37,17 @@ mkdir(stagingFolder);
 cleanup = onCleanup(@() rmdir(stagingFolder, 's'));
 toolboxFolder = fullfile(stagingFolder, "toolbox");
 copyfile(fullfile(rootFolder, "toolbox"), toolboxFolder);
-writelines(jsonencode(metadata, PrettyPrint=true), ...
+readmeFile = fullfile(toolboxFolder, "README.md");
+copyfile(fullfile(rootFolder, "README.md"), readmeFile);
+stagedMetadata = metadata;
+if isMATLABReleaseOlderThan('R2026b')
+    stagedMetadata.description = fileread(readmeFile);
+else
+    stagedMetadata = rmfield(stagedMetadata, 'description');
+    stagedMetadata.readme = 'README.md';
+    stagedMetadata.schemaVersion = '1.2.0';
+end
+writelines(jsonencode(stagedMetadata, PrettyPrint=true), ...
     fullfile(toolboxFolder, "resources", "mpackage.json"), Encoding="UTF-8");
 
 % Validate the staged definition without changing the installed environment.

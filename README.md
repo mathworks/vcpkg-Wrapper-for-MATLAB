@@ -174,7 +174,10 @@ are saved in the ignored `release/` folder:
 - `release/vcpkg-wrapper-toolbox-v1.2.3.mltbx`: the backward-compatible end-user installer.
 
 `toolbox/resources/mpackage.json` is the single source for package identity,
-version, summary, description, author, and minimum supported runtime release.
+version, summary, toolbox description, author, and minimum supported runtime release.
+The packaged MPM description comes from the root `README.md`, which is copied
+into the package. Builds on R2026b or newer use the `readme` field in schema
+1.2.0; earlier releases embed the full README text in the `description` field.
 Its `0.0.0` development version is the default for local builds. A version
 argument or GitHub release tag overrides that version only in the staged package;
 the source manifest is unchanged. Tags must use numeric versions without
