@@ -43,7 +43,7 @@ classdef vcpkgPackagingTest < matlab.unittest.TestCase
             before = fileread(manifest);
 
             artifacts = packageVcpkg(testCase.RootFolder, 'v1.2.3', ...
-                OutputFolder=testCase.OutputFolder);
+                'OutputFolder',testCase.OutputFolder);
             mpmFolder = fullfile(testCase.OutputFolder, 'mpm');
             installerFolder = fullfile(testCase.OutputFolder, 'installer');
             unzip(artifacts(1), mpmFolder);
@@ -98,7 +98,7 @@ classdef vcpkgPackagingTest < matlab.unittest.TestCase
 
         function rejectsUnsupportedVersion(testCase, unsupportedVersion)
             testCase.verifyError(@() packageVcpkg(testCase.RootFolder, ...
-                unsupportedVersion, OutputFolder=testCase.OutputFolder), ...
+                unsupportedVersion, 'OutputFolder', testCase.OutputFolder), ...
                 'vcpkg:PackageVersion');
         end
 
@@ -108,7 +108,7 @@ classdef vcpkgPackagingTest < matlab.unittest.TestCase
                 "vcpkg-wrapper-toolbox-v" + string(version) + ".mltbx");
 
             [artifacts, opts] = packageVcpkg(testCase.RootFolder, version, ...
-                Formats="toolbox", OutputFolder=testCase.OutputFolder);
+                'Formats', "toolbox", 'OutputFolder', testCase.OutputFolder);
 
             testCase.verifyClass(opts, 'matlab.addons.toolbox.ToolboxOptions');
             testCase.verifyEqual(artifacts, output);
