@@ -6,7 +6,59 @@ This simple toolbox wraps [vcpkg - Open source C/C++ dependency manager from Mic
 The wrapper toolbox figures out the host and target triplets as well as the compiler paths automatically. It only requires vcpkg to be available on the system's path.
 
 ## Setup
-Download toolbox installer from releases in GitHub or File Exchange and install in MATLAB.
+MATLAB Package Manager (MPM) is the primary installation mechanism for developers
+using MATLAB R2024b or newer. The `.mltbx` installer remains available for end users
+on MATLAB R2020b or newer. Both formats contain the same runtime code and Getting
+Started guide.
+
+### MPM installation (MATLAB R2024b+)
+
+Install directly from a local clone, passing the **toolbox folder** as the package
+root. Its definition is `toolbox/resources/mpackage.json`:
+
+```matlab
+pkg = mpminstall("C:/path/to/vcpkg-Wrapper-for-MATLAB/toolbox", Prompt=false);
+mpmlist("vcpkgWrapper")
+vcpkg.getToolboxRoot()
+```
+
+For an editable developer installation, keep the clone in a permanent location:
+
+```matlab
+pkg = mpminstall("C:/path/to/vcpkg-Wrapper-for-MATLAB/toolbox", ...
+    Editable=true, InPlace=true, Prompt=false);
+```
+
+Alternatively, download `vcpkg-wrapper-toolbox-vX.Y.Z_mpm.zip` from
+[GitHub Releases](https://github.com/mathworks/vcpkg-Wrapper-for-MATLAB/releases),
+extract it, and install the extracted package folder:
+
+```matlab
+unzip("vcpkg-wrapper-toolbox-vX.Y.Z_mpm.zip", "vcpkg-wrapper-package");
+pkg = mpminstall(fullfile(pwd, "vcpkg-wrapper-package"), Prompt=false);
+```
+
+The ZIP contains `resources/mpackage.json` at its package root; unzip it before
+calling `mpminstall`. GitHub release assets are downloadable distribution files,
+not an indexed MPM repository. Installing by the name `"vcpkgWrapper"` alone
+requires publishing to a configured MPM repository.
+
+### Toolbox installation (MATLAB R2020b+)
+
+Download the `.mltbx` installer from GitHub Releases or
+[File Exchange](https://www.mathworks.com/matlabcentral/fileexchange/182780-vcpkg-wrapper-for-matlab)
+and double-click it in MATLAB, or run:
+
+```matlab
+matlab.addons.toolbox.installToolbox("vcpkg-wrapper-toolbox-vX.Y.Z.mltbx");
+vcpkg.getToolboxRoot()
+```
+
+Install one distribution of the wrapper in a MATLAB environment. The formats use
+the existing toolbox UUID so they represent the same package. When switching
+formats, remove the previous installation through its package manager first.
+Both installers expose the runtime folder automatically. Opening `VcpkgToolbox.prj`
+continues to configure the developer paths; no startup scripts are required.
 
 ### MathWorks Products (https://www.mathworks.com)
 Requires MATLAB release R2020b or newer
@@ -14,6 +66,15 @@ Requires MATLAB release R2020b or newer
 
 ### 3rd Party Products
 - [vcpkg](https://github.com/microsoft/vcpkg)
+- A supported C/C++ compiler; configure it with `mex -setup C++`.
+
+The MPM definition explicitly declares `"dependencies": []`: the wrapper does
+not require any other MATLAB packages. MATLAB itself is covered by the release
+compatibility constraint. External vcpkg and the compiler must be installed
+separately; MPM does not install them. Simulink Real-Time and its target support
+packages/toolchains are optional, required only for the corresponding embedded
+target builds. C/C++ libraries in a consumer's `vcpkg.json` (and the `fmt` sample
+under `tests`) are managed by vcpkg, not by the wrapper's MPM dependency list.
 
 ## Getting started
 The instructions for use are located in the [Getting Started documentation](toolbox/gettingStarted.mlx) and are part of the shipping toolbox.
@@ -88,11 +149,56 @@ buildtool unit                  % Unit tests; no vcpkg builds.
 buildtool integration           % Host linkage and Release-only/Debug+Release modes.
 buildtool integrationWithTarget % Static Release-only targets with all host modes.
 buildtool test                  % Unit tests and host integration tests.
+buildtool packagingTest         % Verify MPM and toolbox artifacts (R2024b+).
 ```
 
 Integration tests require vcpkg and a supported compiler. Target integration tests also require an installed target support package and toolchain; they are skipped when no supported target is detected. Each build uses an isolated temporary manifest and installation folder. JUnit results are written under `results`.
 
 For MATLAB releases without `buildtool`, run `runtests('tests', 'Tag', 'Unit')`. The unit tests use APIs available in R2020b.
+
+## Building and releasing
+
+Build automation requires MATLAB R2024b or newer. Open `VcpkgToolbox.prj` and run:
+
+```matlab
+buildtool release              % Build both formats using the manifest version.
+buildtool release('v1.2.3')     % Build both formats with one release version.
+buildtool mpm('v1.2.3')         % Build only the MPM package ZIP.
+buildtool package('v1.2.3')     % Existing toolbox-only command, unchanged.
+```
+
+The checks, runtime tests, and packaging tests run before packaging. Both outputs
+remain in the repository root and are ignored by Git:
+
+- `vcpkg-wrapper-toolbox-v1.2.3_mpm.zip`: the primary MPM folder distribution.
+- `vcpkg-wrapper-toolbox-v1.2.3.mltbx`: the backward-compatible end-user installer.
+
+`toolbox/resources/mpackage.json` is the single source for package identity,
+version, summary, description, author, and minimum supported runtime release.
+Its `0.0.0` development version preserves the old helper's default. A version
+argument or GitHub release tag overrides that version only in the staged package;
+the source manifest is unchanged. Tags must use numeric versions without
+prerelease or build suffixes because `.mltbx` does not support those suffixes.
+Set the manifest version when distributing an untagged source checkout as a release.
+
+The legacy `packageToolbox(version)` helper still returns `ToolboxOptions` and
+builds only the `.mltbx`, with its existing UUID and filename. The common
+`packageVcpkg` helper supports both formats and an optional `OutputFolder`.
+It stages the entire `toolbox` hierarchy under ignored `work`, validates the MPM
+definition, and cleans the staging folder after packaging. Build helpers, tests,
+CI files, and MATLAB project metadata are not shipped.
+
+GitHub CI retains the cross-platform runtime checks and R2020b unit test job,
+adds packaging tests, and archives both formats after a successful test run.
+The archive job builds on R2024b and prunes checks already completed by the
+upstream jobs. On a `v*` tag, both artifacts receive that tag's version. The
+release workflow waits for CI and publishes those archived files as GitHub release
+assets. Neither workflow publishes to an MPM repository or File Exchange.
+
+Runtime compatibility remains R2020b+, while MPM installation and artifact
+authoring require R2024b+. The existing desktop Windows, Linux, and macOS support
+is retained; MATLAB Online is not supported because the wrapper needs external
+tools. The legacy `.prj` format remains supported across these releases.
 
 ## Community Support
 [MATLAB Central](https://www.mathworks.com/matlabcentral)

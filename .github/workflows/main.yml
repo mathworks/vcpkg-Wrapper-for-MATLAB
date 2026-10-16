@@ -108,3 +108,29 @@ jobs:
         uses: EnricoMi/publish-unit-test-result-action@v2
         with:
           files: "artifacts/**/*.xml"
+
+  package-artifacts:
+    needs: [check-and-test, compatibility-r2020b]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v6
+
+      - name: Set up MATLAB R2024b
+        uses: matlab-actions/setup-matlab@v3
+        with:
+          release: R2024b
+
+      - name: Build MPM and toolbox artifacts
+        uses: matlab-actions/run-command@v3
+        with:
+          command: p = openProject(pwd); plan = buildfile; run(plan, "release", Prune=["check", "test", "packagingTest"])
+
+      - name: Archive MPM and toolbox artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: package-artifacts
+          if-no-files-found: error
+          path: |
+            vcpkg-wrapper-toolbox-v*_mpm.zip
+            vcpkg-wrapper-toolbox-v*.mltbx

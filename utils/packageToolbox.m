@@ -1,36 +1,18 @@
 function toolboxOptions = packageToolbox(toolboxVersion)
+%packageToolbox - Build the legacy toolbox installer
+%   toolboxOptions = packageToolbox builds the .mltbx distribution artifact
+%   using the shared package definition's version. The output filename is
+%   vcpkg-wrapper-toolbox-vVERSION.mltbx in the repository root.
+%
+%   toolboxOptions = packageToolbox(toolboxVersion) also specifies version
+%   text or a scalar matlab.mpm.Version. The return value is ToolboxOptions.
+%
+%   See also packageVcpkg, readVcpkgPackage, matlab.mpm.Version
 
 arguments
-    toolboxVersion matlab.mpm.Version = '0.0.0'
+    toolboxVersion = ""
 end
 
-% Toolbox Parameter Configuration
-toolboxOptions = matlab.addons.toolbox.ToolboxOptions("toolbox", "53137c5a-1016-4021-9e29-83f3951d3c9a");
-
-toolboxOptions.ToolboxName = "vcpkg Wrapper for MATLAB";
-toolboxOptions.ToolboxVersion = toolboxVersion.string;
-toolboxOptions.Summary = "This toolbox wraps vcpkg to enable easy package management in MATLAB projects.";
-toolboxOptions.AuthorName = 'Pablo Romero';
-toolboxOptions.AuthorEmail = "promero@mathworks.com";
-toolboxOptions.AuthorCompany = "The MathWorks";
-% toolboxOptions.ToolboxImageFile = "toolbox/toolboxIcon.jpeg";
-toolboxOptions.ToolboxGettingStartedGuide = "toolbox/gettingStarted.mlx";
-toolboxOptions.OutputFile = sprintf("vcpkg-wrapper-toolbox-v%s.mltbx", toolboxVersion.string);
-
-toolboxOptions.MinimumMatlabRelease = "R2020b";
-% toolboxOptions.MaximumMatlabRelease = "R2023a"; % Won't limit maximum MATLAB release
-supportedPlatforms = toolboxOptions.SupportedPlatforms;
-supportedPlatforms.Glnxa64 = true;
-if isfield(supportedPlatforms, 'Mac')
-    supportedPlatforms.Mac = true;
-else
-    supportedPlatforms.Maci64 = true;
-end
-supportedPlatforms.MatlabOnline = false;
-supportedPlatforms.Win64 = true;
-toolboxOptions.SupportedPlatforms = supportedPlatforms;
-
-% Generate toolbox
-matlab.addons.toolbox.packageToolbox(toolboxOptions);
-
+rootFolder = fileparts(fileparts(mfilename('fullpath')));
+[~, toolboxOptions] = packageVcpkg(rootFolder, toolboxVersion, Formats="toolbox");
 end

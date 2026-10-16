@@ -1,0 +1,19 @@
+{
+    "name": "vcpkgWrapper",
+    "version": "0.0.0",
+    "id": "53137c5a-1016-4021-9e29-83f3951d3c9a",
+    "displayName": "vcpkg Wrapper for MATLAB",
+    "summary": "This toolbox wraps vcpkg to enable easy package management in MATLAB projects.",
+    "description": "Wrap vcpkg manifest builds in MATLAB projects with automatic host and target triplet selection, compiler setup, dynamic or static host libraries, and static embedded target libraries.",
+    "provider": {
+        "name": "Pablo Romero",
+        "organization": "The MathWorks",
+        "email": "promero@mathworks.com"
+    },
+    "folders": [
+        { "path": "overlay-triplets" }
+    ],
+    "dependencies": [],
+    "releaseCompatibility": ">=R2020b",
+    "schemaVersion": "1.0.0"
+}

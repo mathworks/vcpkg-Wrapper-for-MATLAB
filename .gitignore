@@ -18,6 +18,7 @@ results
 # Packaged app and toolbox files
 *.mlappinstall
 *.mltbx
+vcpkg-wrapper-toolbox-v*_mpm.zip
 
 # Deployable archives
 *.ctf
@@ -38,4 +39,3 @@ codegen/
 
 # buildtool cache folder
 .buildtool/
-
