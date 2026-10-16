@@ -73,7 +73,7 @@ classdef vcpkgPackagingTest < matlab.unittest.TestCase
             [~, version] = readVcpkgPackage(testCase.RootFolder);
 
             artifacts = packageVcpkg(testCase.RootFolder, 'Formats', "mpm", ...
-                OutputFolder=testCase.OutputFolder);
+                'OutputFolder', testCase.OutputFolder);
             unzip(artifacts, fullfile(testCase.OutputFolder, 'mpm'));
             pkg = matlab.mpm.Package(fullfile(testCase.OutputFolder, 'mpm'));
 
