@@ -18,7 +18,7 @@ results
 # Packaged app and toolbox files
 *.mlappinstall
 *.mltbx
-vcpkg-wrapper-toolbox-v*_mpm.zip
+*_mpm.zip
 
 # Deployable archives
 *.ctf
