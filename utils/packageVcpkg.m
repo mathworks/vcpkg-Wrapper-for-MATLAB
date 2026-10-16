@@ -1,7 +1,8 @@
 function [artifacts, toolboxOptions] = packageVcpkg(rootFolder, version, options)
 %packageVcpkg - Build MPM and toolbox artifacts from shared metadata
 %   ARTIFACTS = packageVcpkg(rootFolder) builds an MPM folder ZIP and a
-%   toolbox installer in rootFolder using toolbox/resources/mpackage.json.
+%   toolbox installer in rootFolder/release using the package definition
+%   in toolbox/resources/mpackage.json.
 %
 %   [...] = packageVcpkg(rootFolder,VERSION) also specifies release
 %   version text, a leading-v tag, or a scalar matlab.mpm.Version object.
@@ -14,14 +15,14 @@ function [artifacts, toolboxOptions] = packageVcpkg(rootFolder, version, options
 %   [ARTIFACTS,toolboxOptions] = packageVcpkg(...) also returns the
 %   ToolboxOptions used for the installer, or [] for an MPM-only build.
 %
-%   See also packageToolbox, readVcpkgPackage, matlab.mpm.Package
+%   See also readVcpkgPackage, matlab.mpm.Package
 
 arguments
     rootFolder {mustBeTextScalar}
     version = ""
     options.Formats (1,:) string {mustBeNonempty, ...
         mustBeMember(options.Formats, ["mpm", "toolbox"])} = ["mpm", "toolbox"]
-    options.OutputFolder {mustBeTextScalar} = rootFolder
+    options.OutputFolder {mustBeTextScalar} = fullfile(rootFolder, "release")
 end
 
 [metadata, version] = readVcpkgPackage(rootFolder, version);

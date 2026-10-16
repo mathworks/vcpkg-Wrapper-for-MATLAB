@@ -42,8 +42,8 @@ jobs:
           name: package-artifacts
           if-no-files-found: error
           path: |
-            vcpkg-wrapper-toolbox-v*_mpm.zip
-            vcpkg-wrapper-toolbox-v*.mltbx
+            release/vcpkg-wrapper-toolbox-v*_mpm.zip
+            release/vcpkg-wrapper-toolbox-v*.mltbx
       
       # Create new release
       - name: Create a new release
@@ -51,7 +51,7 @@ jobs:
         with:
           name: '${{  github.ref_name }}'
           files: |
-            vcpkg-wrapper-toolbox-v*_mpm.zip
-            vcpkg-wrapper-toolbox-v*.mltbx
+            release/vcpkg-wrapper-toolbox-v*_mpm.zip
+            release/vcpkg-wrapper-toolbox-v*.mltbx
           fail_on_unmatched_files: true
           generate_release_notes: true

@@ -168,22 +168,23 @@ buildtool package('v1.2.3')     % Existing toolbox-only command, unchanged.
 ```
 
 The checks, runtime tests, and packaging tests run before packaging. Both outputs
-remain in the repository root and are ignored by Git:
+are saved in the ignored `release/` folder:
 
-- `vcpkg-wrapper-toolbox-v1.2.3_mpm.zip`: the primary MPM folder distribution.
-- `vcpkg-wrapper-toolbox-v1.2.3.mltbx`: the backward-compatible end-user installer.
+- `release/vcpkg-wrapper-toolbox-v1.2.3_mpm.zip`: the primary MPM folder distribution.
+- `release/vcpkg-wrapper-toolbox-v1.2.3.mltbx`: the backward-compatible end-user installer.
 
 `toolbox/resources/mpackage.json` is the single source for package identity,
 version, summary, description, author, and minimum supported runtime release.
-Its `0.0.0` development version preserves the old helper's default. A version
+Its `0.0.0` development version is the default for local builds. A version
 argument or GitHub release tag overrides that version only in the staged package;
 the source manifest is unchanged. Tags must use numeric versions without
 prerelease or build suffixes because `.mltbx` does not support those suffixes.
 Set the manifest version when distributing an untagged source checkout as a release.
 
-The legacy `packageToolbox(version)` helper still returns `ToolboxOptions` and
-builds only the `.mltbx`, with its existing UUID and filename. The common
-`packageVcpkg` helper supports both formats and an optional `OutputFolder`.
+The `package` build task calls `packageVcpkg` with `Formats="toolbox"` to build
+only the `.mltbx`, with its existing UUID and filename. The common `packageVcpkg`
+helper supports both formats, defaults to `release/`, and accepts an optional
+`OutputFolder` override.
 It stages the entire `toolbox` hierarchy under ignored `work`, validates the MPM
 definition, and cleans the staging folder after packaging. Build helpers, tests,
 CI files, and MATLAB project metadata are not shipped.

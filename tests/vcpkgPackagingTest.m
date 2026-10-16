@@ -102,17 +102,16 @@ classdef vcpkgPackagingTest < matlab.unittest.TestCase
                 'vcpkg:PackageVersion');
         end
 
-        function legacyHelperKeepsFilenameAndReturnType(testCase)
-            testCase.applyFixture(matlab.unittest.fixtures.CurrentFolderFixture(testCase.RootFolder));
-            version = matlab.mpm.Version('999.0.0');
-            output = fullfile(testCase.RootFolder, ...
+        function toolboxOnlyBuildKeepsFilenameAndReturnType(testCase)
+            version = matlab.mpm.Version('1.2.3');
+            output = fullfile(testCase.OutputFolder, ...
                 "vcpkg-wrapper-toolbox-v" + string(version) + ".mltbx");
-            testCase.assumeFalse(isfile(output), 'Avoid replacing an existing local artifact.');
-            testCase.addTeardown(@() delete(output));
 
-            opts = packageToolbox(version);
+            [artifacts, opts] = packageVcpkg(testCase.RootFolder, version, ...
+                Formats="toolbox", OutputFolder=testCase.OutputFolder);
 
             testCase.verifyClass(opts, 'matlab.addons.toolbox.ToolboxOptions');
+            testCase.verifyEqual(artifacts, output);
             testCase.verifyTrue(isfile(output));
             testCase.verifyEqual(string(opts.OutputFile), output);
             testCase.verifyEqual(matlab.addons.toolbox.toolboxVersion(output), char(string(version)));
