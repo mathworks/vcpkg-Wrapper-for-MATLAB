@@ -191,8 +191,8 @@ CI files, and MATLAB project metadata are not shipped.
 `main.yml` runs the default build tasks for cross-platform runtime and packaging
 verification, retains the R2020b unit test job, and publishes test results.
 On a `v*` tag, `release.yml` waits for CI, then explicitly runs the `release` task
-on R2024b to generate both formats with that tag's version. It prunes checks
-already completed by CI, archives both artifacts, and publishes them as GitHub
+using the default MATLAB release to generate both formats with that tag's version.
+It prunes checks already completed by CI, archives both artifacts, and publishes them as GitHub
 release assets. Neither workflow publishes to an MPM repository or File Exchange.
 
 Runtime compatibility remains R2020b+, while MPM installation and artifact
