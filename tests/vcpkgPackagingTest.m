@@ -1,5 +1,5 @@
 classdef vcpkgPackagingTest < matlab.unittest.TestCase
-    % Verify installable artifacts and preservation of the legacy toolbox.
+    % Verify the toolbox installer and its embedded package metadata.
 
     properties
         RootFolder
@@ -38,27 +38,23 @@ classdef vcpkgPackagingTest < matlab.unittest.TestCase
             testCase.verifyEmpty(pkg.Dependencies);
         end
 
-        function artifactsShareVersionAndContents(testCase)
+        function installerContainsVersionedPackageMetadata(testCase)
             manifest = fullfile(testCase.RootFolder, 'toolbox', 'resources', 'mpackage.json');
             before = fileread(manifest);
 
-            artifacts = packageVcpkg(testCase.RootFolder, 'v1.2.3', ...
+            artifact = packageVcpkg(testCase.RootFolder, 'v1.2.3', ...
                 'OutputFolder',testCase.OutputFolder);
-            mpmFolder = fullfile(testCase.OutputFolder, 'mpm');
             installerFolder = fullfile(testCase.OutputFolder, 'installer');
-            unzip(artifacts(1), mpmFolder);
-            unzip(artifacts(2), installerFolder);
-            pkg = matlab.mpm.Package(mpmFolder);
+            unzip(artifact, installerFolder);
             installedRoot = fullfile(installerFolder, 'fsroot');
             installerPkg = matlab.mpm.Package(installedRoot);
+            [metadata, version] = readVcpkgPackage(testCase.RootFolder, 'v1.2.3');
 
-            testCase.verifyEqual(pkg.Version, matlab.mpm.Version('1.2.3'));
-            testCase.verifyEqual(installerPkg.Version, pkg.Version);
-            testCase.verifyEqual(installerPkg.ID, pkg.ID);
-            testCase.verifyEqual(matlab.addons.toolbox.toolboxVersion(artifacts(2)), '1.2.3');
-            testCase.verifyEqual(replace(artifacts(1), '_mpm.zip', '.mltbx'), artifacts(2));
+            testCase.verifyEqual(installerPkg.Version, version);
+            testCase.verifyEqual(installerPkg.ID, string(metadata.id));
+            testCase.verifyEqual(matlab.addons.toolbox.toolboxVersion(artifact), '1.2.3');
             testCase.verifyEqual(fileread(manifest), before);
-            verifyContents(testCase, mpmFolder, installedRoot);
+            verifyContents(testCase, installedRoot);
 
             config = fileread(fullfile(installerFolder, 'metadata', 'configuration.xml'));
             requirements = fileread(fullfile(installerFolder, 'metadata', 'systemRequirements.xml'));
@@ -72,13 +68,14 @@ classdef vcpkgPackagingTest < matlab.unittest.TestCase
         function defaultBuildUsesManifestVersion(testCase)
             [~, version] = readVcpkgPackage(testCase.RootFolder);
 
-            artifacts = packageVcpkg(testCase.RootFolder, 'Formats', "mpm", ...
+            artifact = packageVcpkg(testCase.RootFolder, ...
                 'OutputFolder', testCase.OutputFolder);
-            unzip(artifacts, fullfile(testCase.OutputFolder, 'mpm'));
-            pkg = matlab.mpm.Package(fullfile(testCase.OutputFolder, 'mpm'));
+            installerFolder = fullfile(testCase.OutputFolder, 'installer');
+            unzip(artifact, installerFolder);
+            pkg = matlab.mpm.Package(fullfile(installerFolder, 'fsroot'));
 
             testCase.verifyEqual(pkg.Version, version);
-            testCase.verifyNumElements(artifacts, 1);
+            testCase.verifyEqual(matlab.addons.toolbox.toolboxVersion(artifact), char(string(version)));
         end
 
         function acceptsTextVersion(testCase, versionInput)
@@ -102,37 +99,37 @@ classdef vcpkgPackagingTest < matlab.unittest.TestCase
                 'vcpkg:PackageVersion');
         end
 
-        function toolboxOnlyBuildKeepsFilenameAndReturnType(testCase)
+        function buildKeepsFilenameAndReturnType(testCase)
             version = matlab.mpm.Version('1.2.3');
             output = fullfile(testCase.OutputFolder, ...
                 "vcpkg-wrapper-toolbox-v" + string(version) + ".mltbx");
 
-            [artifacts, opts] = packageVcpkg(testCase.RootFolder, version, ...
-                'Formats', "toolbox", 'OutputFolder', testCase.OutputFolder);
+            [artifact, opts] = packageVcpkg(testCase.RootFolder, version, ...
+                'OutputFolder', testCase.OutputFolder);
 
             testCase.verifyClass(opts, 'matlab.addons.toolbox.ToolboxOptions');
-            testCase.verifyEqual(artifacts, output);
+            testCase.verifyEqual(artifact, output);
             testCase.verifyTrue(isfile(output));
+            testCase.verifyEqual(relativeFiles(testCase.OutputFolder), ...
+                "vcpkg-wrapper-toolbox-v" + string(version) + ".mltbx");
             testCase.verifyEqual(string(opts.OutputFile), output);
             testCase.verifyEqual(matlab.addons.toolbox.toolboxVersion(output), char(string(version)));
         end
     end
 end
 
-function verifyContents(testCase, mpmFolder, installedRoot)
+function verifyContents(testCase, installedRoot)
 sourceRoot = fullfile(testCase.RootFolder, 'toolbox');
 sourceFiles = relativeFiles(sourceRoot);
 packagedFiles = sort([sourceFiles, "README.md"]);
-testCase.verifyEqual(relativeFiles(mpmFolder), packagedFiles);
 testCase.verifyEmpty(setdiff(packagedFiles, relativeFiles(installedRoot)));
 readmeFile = fullfile(testCase.RootFolder, 'README.md');
-testCase.verifyEqual(readBytes(fullfile(mpmFolder, 'README.md')), readBytes(readmeFile));
 testCase.verifyEqual(readBytes(fullfile(installedRoot, 'README.md')), readBytes(readmeFile));
-metadata = jsondecode(fileread(fullfile(mpmFolder, 'resources', 'mpackage.json')));
+metadata = jsondecode(fileread(fullfile(installedRoot, 'resources', 'mpackage.json')));
 if isMATLABReleaseOlderThan('R2026b')
     testCase.verifyEqual(metadata.description, fileread(readmeFile));
 else
-    pkg = matlab.mpm.Package(mpmFolder);
+    pkg = matlab.mpm.Package(installedRoot);
     testCase.verifyEqual(string(metadata.readme), "README.md");
     testCase.verifyEqual(string(metadata.schemaVersion), "1.2.0");
     testCase.verifyFalse(isfield(metadata, 'description'));
@@ -140,8 +137,6 @@ else
 end
 unchangedFiles = setdiff(sourceFiles, 'resources/mpackage.json');
 for file = unchangedFiles
-    testCase.verifyEqual(readBytes(fullfile(mpmFolder, file)), ...
-        readBytes(fullfile(sourceRoot, file)), char(file));
     testCase.verifyEqual(readBytes(fullfile(installedRoot, file)), ...
         readBytes(fullfile(sourceRoot, file)), char(file));
 end

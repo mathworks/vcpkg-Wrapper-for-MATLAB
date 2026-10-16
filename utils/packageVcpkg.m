@@ -1,27 +1,21 @@
-function [artifacts, toolboxOptions] = packageVcpkg(rootFolder, version, options)
-%packageVcpkg - Build MPM and toolbox artifacts from shared metadata
-%   ARTIFACTS = packageVcpkg(rootFolder) builds an MPM folder ZIP and a
-%   toolbox installer in rootFolder/release using the package definition
-%   in toolbox/resources/mpackage.json.
+function [artifact, toolboxOptions] = packageVcpkg(rootFolder, version, options)
+%packageVcpkg - Build a toolbox installer with embedded package metadata
+%   ARTIFACT = packageVcpkg(rootFolder) builds a toolbox installer in
+%   rootFolder/release using toolbox/resources/mpackage.json.
 %
 %   [...] = packageVcpkg(rootFolder,VERSION) also specifies release
 %   version text, a leading-v tag, or a scalar matlab.mpm.Version object.
 %
-%   [...] = packageVcpkg(...,Formats=FORMATS) selects "mpm", "toolbox",
-%   or both. The default builds both formats.
-%
 %   [...] = packageVcpkg(...,OutputFolder=FOLDER) changes the destination.
 %
-%   [ARTIFACTS,toolboxOptions] = packageVcpkg(...) also returns the
-%   ToolboxOptions used for the installer, or [] for an MPM-only build.
+%   [ARTIFACT,toolboxOptions] = packageVcpkg(...) also returns the
+%   ToolboxOptions used for the installer.
 %
 %   See also readVcpkgPackage, matlab.mpm.Package
 
 arguments
     rootFolder {mustBeTextScalar}
     version = ""
-    options.Formats (1,:) string {mustBeNonempty, ...
-        mustBeMember(options.Formats, ["mpm", "toolbox"])} = ["mpm", "toolbox"]
     options.OutputFolder {mustBeTextScalar} = fullfile(rootFolder, "release")
 end
 
@@ -59,45 +53,36 @@ assert(isempty(pkg.MissingDependencies), 'vcpkg:PackageDependencies', ...
 if ~isfolder(options.OutputFolder)
     mkdir(options.OutputFolder);
 end
-artifacts = strings(1, 0);
-toolboxOptions = [];
-if any(options.Formats == "mpm")
-    archive = fullfile(options.OutputFolder, artifactBase + "_mpm.zip");
-    zip(archive, "*", toolboxFolder);
-    artifacts(end+1) = archive;
+% Preserve the installer UUID and compatibility; package the hierarchy.
+toolboxOptions = matlab.addons.toolbox.ToolboxOptions( ...
+    toolboxFolder, string(metadata.id), ...
+    ToolboxName=string(metadata.displayName), ...
+    ToolboxVersion=versionText, ...
+    Summary=string(metadata.summary), ...
+    Description=string(metadata.description), ...
+    AuthorName=string(metadata.provider.name), ...
+    AuthorEmail=string(metadata.provider.email), ...
+    AuthorCompany=string(metadata.provider.organization), ...
+    MinimumMatlabRelease=extractAfter(string(metadata.releaseCompatibility), ">="), ...
+    MaximumMatlabRelease="");
+toolboxOptions.ToolboxGettingStartedGuide = ...
+    fullfile(toolboxFolder, "gettingStarted.mlx");
+% MPM exposes its root; ToolboxOptions imports only member paths.
+toolboxOptions.ToolboxMatlabPath = unique([toolboxFolder; ...
+    string(toolboxOptions.ToolboxMatlabPath(:))], 'stable');
+supportedPlatforms = toolboxOptions.SupportedPlatforms;
+supportedPlatforms.Glnxa64 = true;
+if isfield(supportedPlatforms, 'Mac')
+    supportedPlatforms.Mac = true;
+else
+    supportedPlatforms.Maci64 = true;
 end
-if any(options.Formats == "toolbox")
-    % Preserve the installer UUID and compatibility; package the hierarchy.
-    toolboxOptions = matlab.addons.toolbox.ToolboxOptions( ...
-        toolboxFolder, string(metadata.id), ...
-        ToolboxName=string(metadata.displayName), ...
-        ToolboxVersion=versionText, ...
-        Summary=string(metadata.summary), ...
-        Description=string(metadata.description), ...
-        AuthorName=string(metadata.provider.name), ...
-        AuthorEmail=string(metadata.provider.email), ...
-        AuthorCompany=string(metadata.provider.organization), ...
-        MinimumMatlabRelease=extractAfter(string(metadata.releaseCompatibility), ">="), ...
-        MaximumMatlabRelease="");
-    toolboxOptions.ToolboxGettingStartedGuide = ...
-        fullfile(toolboxFolder, "gettingStarted.mlx");
-    % MPM exposes its root; ToolboxOptions imports only member paths.
-    toolboxOptions.ToolboxMatlabPath = unique([toolboxFolder; ...
-        string(toolboxOptions.ToolboxMatlabPath(:))], 'stable');
-    supportedPlatforms = toolboxOptions.SupportedPlatforms;
-    supportedPlatforms.Glnxa64 = true;
-    if isfield(supportedPlatforms, 'Mac')
-        supportedPlatforms.Mac = true;
-    else
-        supportedPlatforms.Maci64 = true;
-    end
-    supportedPlatforms.MatlabOnline = false;
-    supportedPlatforms.Win64 = true;
-    toolboxOptions.SupportedPlatforms = supportedPlatforms;
-    toolboxOptions.OutputFile = fullfile(options.OutputFolder, artifactBase + ".mltbx");
-    matlab.addons.toolbox.packageToolbox(toolboxOptions);
-    artifacts(end+1) = string(toolboxOptions.OutputFile);
-end
-assert(all(isfile(artifacts)), 'vcpkg:PackageMissing', ...
-    'A requested release artifact was not created.');
+supportedPlatforms.MatlabOnline = false;
+supportedPlatforms.Win64 = true;
+toolboxOptions.SupportedPlatforms = supportedPlatforms;
+toolboxOptions.OutputFile = fullfile(options.OutputFolder, artifactBase + ".mltbx");
+matlab.addons.toolbox.packageToolbox(toolboxOptions);
+artifact = string(toolboxOptions.OutputFile);
+assert(isfile(artifact), 'vcpkg:PackageMissing', ...
+    'The toolbox installer was not created.');
 end

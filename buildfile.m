@@ -1,7 +1,7 @@
 function plan = buildfile
-%BUILDFILE - Define verification and dual packaging tasks
+%BUILDFILE - Define verification and toolbox packaging tasks
 %   PLAN = BUILDFILE defines code checks, runtime tests, packaging tests,
-%   and MPM and toolbox builds. Release tags override the manifest version.
+%   and toolbox builds. Release tags override the manifest version.
 %
 %   See also buildtool, packageVcpkg
 import matlab.buildtool.Task
@@ -16,7 +16,7 @@ plan("check") = CodeIssuesTask(["toolbox", "tests", "utils", "buildfile.m"], ...
     Results="code-issues/results.sarif");
 
 plan("packagingTest") = TestTask("tests", ...
-    Description="Verify shared metadata and both distribution formats", ...
+    Description="Verify the toolbox and its embedded package metadata", ...
     Tag="Packaging", ...
     SourceFiles=["utils", "buildfile.m"], ...
     TestResults="results/packagingTestResults.xml");
@@ -48,28 +48,13 @@ plan("test") = Task( ...
     Description="Run unit and host integration tests", ...
     Dependencies=["unit" "integration"]);
 
-% Keep format-specific commands and save release artifacts together.
-plan("package") = Task( ...
-    Description="Build the .mltbx distribution artifact", ...
-    Dependencies=["check" "test" "packagingTest"], ...
-    Actions=@packageTask, ...
-    DisableIncremental=true, ...
-    Outputs="release/vcpkg-wrapper-toolbox-v*.mltbx");
-
-plan("mpm") = Task( ...
-    Description="Build the primary MPM package folder archive", ...
-    Dependencies=["check" "test" "packagingTest"], ...
-    Actions=@mpmTask, ...
-    DisableIncremental=true, ...
-    Outputs="release/vcpkg-wrapper-toolbox-v*_mpm.zip");
-
+% Save the toolbox installer in the release folder.
 plan("release") = Task( ...
-    Description="Build version-aligned MPM and toolbox artifacts", ...
+    Description="Build the toolbox release", ...
     Dependencies=["check" "test" "packagingTest"], ...
     Actions=@releaseTask, ...
     DisableIncremental=true, ...
-    Outputs=["release/vcpkg-wrapper-toolbox-v*_mpm.zip", ...
-        "release/vcpkg-wrapper-toolbox-v*.mltbx"]);
+    Outputs="release/vcpkg-wrapper-toolbox-v*.mltbx");
 
 % Run runtime and packaging verification by default.
 plan.DefaultTasks = ["check" "test" "packagingTest"];
@@ -85,40 +70,19 @@ else
 end
 end
 
-function packageTask(context, version)
-arguments
-    context
-    version = githubReleaseVersion()
-end
-logArtifacts(context, packageVcpkg(context.Plan.RootFolder, version, Formats="toolbox"));
-end
-
-function mpmTask(context, version)
-arguments
-    context
-    version = githubReleaseVersion()
-end
-logArtifacts(context, packageVcpkg(context.Plan.RootFolder, version, Formats="mpm"));
-end
-
 function releaseTask(context, version)
 arguments
     context
     version = githubReleaseVersion()
 end
-logArtifacts(context, packageVcpkg(context.Plan.RootFolder, version));
+artifact = packageVcpkg(context.Plan.RootFolder, version);
+info = dir(artifact);
+context.log(sprintf("Package: %s (%.1f KB)", artifact, info.bytes / 1024));
 end
 
 function version = githubReleaseVersion()
 version = "";
 if strcmp(getenv("GITHUB_REF_TYPE"), "tag")
     version = getenv("GITHUB_REF_NAME");
-end
-end
-
-function logArtifacts(context, artifacts)
-for artifact = artifacts
-    info = dir(artifact);
-    context.log(sprintf("Package: %s (%.1f KB)", artifact, info.bytes / 1024));
 end
 end

@@ -7,9 +7,9 @@ The wrapper toolbox figures out the host and target triplets as well as the comp
 
 ## Setup
 MATLAB Package Manager (MPM) is the primary installation mechanism for developers
-using MATLAB R2024b or newer. The `.mltbx` installer remains available for end users
-on MATLAB R2020b or newer. Both formats contain the same runtime code and Getting
-Started guide.
+using MATLAB R2024b or newer. Releases distribute a single `.mltbx` installer
+for MATLAB R2020b or newer, including the MPM package definition, runtime code,
+and Getting Started guide.
 
 ### MPM installation (MATLAB R2024b+)
 
@@ -29,23 +29,15 @@ pkg = mpminstall("C:/path/to/vcpkg-Wrapper-for-MATLAB/toolbox", ...
     Editable=true, InPlace=true, Prompt=false);
 ```
 
-Alternatively, download `vcpkg-wrapper-toolbox-vX.Y.Z_mpm.zip` from
-[GitHub Releases](https://github.com/mathworks/vcpkg-Wrapper-for-MATLAB/releases),
-extract it, and install the extracted package folder:
-
-```matlab
-unzip("vcpkg-wrapper-toolbox-vX.Y.Z_mpm.zip", "vcpkg-wrapper-package");
-pkg = mpminstall(fullfile(pwd, "vcpkg-wrapper-package"), Prompt=false);
-```
-
-The ZIP contains `resources/mpackage.json` at its package root; unzip it before
-calling `mpminstall`. GitHub release assets are downloadable distribution files,
-not an indexed MPM repository. Installing by the name `"vcpkgWrapper"` alone
+The `.mltbx` release includes `resources/mpackage.json` in its toolbox hierarchy.
+GitHub release assets are downloadable distribution files, not an indexed MPM
+repository. Installing by the name `"vcpkgWrapper"` alone
 requires publishing to a configured MPM repository.
 
 ### Toolbox installation (MATLAB R2020b+)
 
-Download the `.mltbx` installer from GitHub Releases or
+Download the `.mltbx` installer from
+[GitHub Releases](https://github.com/mathworks/vcpkg-Wrapper-for-MATLAB/releases) or
 [File Exchange](https://www.mathworks.com/matlabcentral/fileexchange/182780-vcpkg-wrapper-for-matlab)
 and double-click it in MATLAB, or run:
 
@@ -54,10 +46,10 @@ matlab.addons.toolbox.installToolbox("vcpkg-wrapper-toolbox-vX.Y.Z.mltbx");
 vcpkg.getToolboxRoot()
 ```
 
-Install one distribution of the wrapper in a MATLAB environment. The formats use
-the existing toolbox UUID so they represent the same package. When switching
-formats, remove the previous installation through its package manager first.
-Both installers expose the runtime folder automatically. Opening `VcpkgToolbox.prj`
+Install the wrapper once in a MATLAB environment. MPM and the toolbox installer
+use the same package UUID. When switching installation methods, remove the
+previous installation through its package manager first.
+Both methods expose the runtime folder automatically. Opening `VcpkgToolbox.prj`
 continues to configure the developer paths; no startup scripts are required.
 
 ### MathWorks Products (https://www.mathworks.com)
@@ -149,7 +141,7 @@ buildtool unit                  % Unit tests; no vcpkg builds.
 buildtool integration           % Host linkage and Release-only/Debug+Release modes.
 buildtool integrationWithTarget % Static Release-only targets with all host modes.
 buildtool test                  % Unit tests and host integration tests.
-buildtool packagingTest         % Verify MPM and toolbox artifacts (R2024b+).
+buildtool packagingTest         % Verify toolbox and embedded metadata (R2024b+).
 ```
 
 Integration tests require vcpkg and a supported compiler. Target integration tests also require an installed target support package and toolchain; they are skipped when no supported target is detected. Each build uses an isolated temporary manifest and installation folder. JUnit results are written under `results`.
@@ -161,22 +153,18 @@ For MATLAB releases without `buildtool`, run `runtests('tests', 'Tag', 'Unit')`.
 Build automation requires MATLAB R2024b or newer. Open `VcpkgToolbox.prj` and run:
 
 ```matlab
-buildtool release              % Build both formats using the manifest version.
-buildtool release('v1.2.3')     % Build both formats with one release version.
-buildtool mpm('v1.2.3')         % Build only the MPM package ZIP.
-buildtool package('v1.2.3')     % Existing toolbox-only command, unchanged.
+buildtool release              % Build the toolbox using the manifest version.
+buildtool release('v1.2.3')     % Build the toolbox with a release version.
 ```
 
-The checks, runtime tests, and packaging tests run before packaging. Both outputs
-are saved in the ignored `release/` folder:
-
-- `release/vcpkg-wrapper-toolbox-v1.2.3_mpm.zip`: the primary MPM folder distribution.
-- `release/vcpkg-wrapper-toolbox-v1.2.3.mltbx`: the backward-compatible end-user installer.
+The checks, runtime tests, and packaging tests run before packaging. The installer
+is saved as `release/vcpkg-wrapper-toolbox-v1.2.3.mltbx` in the ignored `release/`
+folder.
 
 `toolbox/resources/mpackage.json` is the single source for package identity,
 version, summary, toolbox description, author, and minimum supported runtime release.
-The packaged MPM description comes from the root `README.md`, which is copied
-into the package. Builds on R2026b or newer use the `readme` field in schema
+The embedded MPM description comes from the root `README.md`, which is copied
+into the toolbox. Builds on R2026b or newer use the `readme` field in schema
 1.2.0; earlier releases embed the full README text in the `description` field.
 Its `0.0.0` development version is the default for local builds. A version
 argument or GitHub release tag overrides that version only in the staged package;
@@ -184,10 +172,9 @@ the source manifest is unchanged. Tags must use numeric versions without
 prerelease or build suffixes because `.mltbx` does not support those suffixes.
 Set the manifest version when distributing an untagged source checkout as a release.
 
-The `package` build task calls `packageVcpkg` with `Formats="toolbox"` to build
-only the `.mltbx`, with its existing UUID and filename. The common `packageVcpkg`
-helper supports both formats, defaults to `release/`, and accepts an optional
-`OutputFolder` override.
+The `release` build task calls `packageVcpkg` to build the `.mltbx`
+with its existing UUID and filename. The helper defaults to `release/` and
+accepts an optional `OutputFolder` override.
 It stages the entire `toolbox` hierarchy under ignored `work`, validates the MPM
 definition, and cleans the staging folder after packaging. Build helpers, tests,
 CI files, and MATLAB project metadata are not shipped.
@@ -195,9 +182,10 @@ CI files, and MATLAB project metadata are not shipped.
 `main.yml` runs the default build tasks for cross-platform runtime and packaging
 verification, retains the R2020b unit test job, and publishes test results.
 On a `v*` tag, `release.yml` waits for CI, then explicitly runs the `release` task
-using the default MATLAB release to generate both formats with that tag's version.
-It prunes checks already completed by CI, archives both artifacts, and publishes them as GitHub
-release assets. Neither workflow publishes to an MPM repository or File Exchange.
+using the default MATLAB release to generate the `.mltbx` with that tag's version.
+It prunes checks already completed by CI, and publishes the installer
+as a GitHub release asset. Neither workflow publishes to an MPM repository or
+File Exchange.
 
 Runtime compatibility remains R2020b+, while MPM installation and artifact
 authoring require R2024b+. The existing desktop Windows, Linux, and macOS support
