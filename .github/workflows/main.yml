@@ -53,7 +53,7 @@ jobs:
           sarif_file: code-issues/results.sarif
           # Optional category for the results
           # Used to differentiate multiple results for one commit
-          category: matlab
+          category: matlab-${{ runner.os }}
 
       - name: Upload Test Results
         if: success() || failure()
