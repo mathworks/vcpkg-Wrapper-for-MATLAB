@@ -1,4 +1,4 @@
-function buildVcpkgDeps(manifestFolder, vpckgArguments, options)
+function dependencyPaths = buildVcpkgDeps(manifestFolder, vpckgArguments, options)
 %buildVcpkgDeps - Build vcpkg manifest dependencies for the host and target
 %   buildVcpkgDeps(manifestFolder) builds dependencies from the manifest
 %   in manifestFolder. Host libraries are dynamic and prefer Release-only
@@ -26,6 +26,18 @@ function buildVcpkgDeps(manifestFolder, vpckgArguments, options)
 %   with the --debug flag when TF is true. The default is false. Library
 %   build configuration is selected separately with buildRelease.
 %
+%   buildVcpkgDeps(...) automatically maps Windows QNX dependency folders
+%   containing whitespace to temporary drive letters while building. The
+%   libraries remain in the original vcpkg folders, and the mappings are
+%   removed on completion or error. Each affected root requires an unused
+%   drive letter. Forwarded root arguments can still select other folders.
+%
+%   dependencyPaths = buildVcpkgDeps(...) returns a structure containing
+%   installRoot, buildtreesRoot, packagesRoot, hostDir, and targetDir as
+%   absolute character vectors. Use hostDir and targetDir to configure
+%   consumers when dependencies are installed outside the manifest folder.
+%   These paths refer to the physical folders, not temporary drive letters.
+%
 %   See also getHostTriplet, getTargetTriplet
 
 % Copyright 2025 The MathWorks, Inc.
@@ -42,6 +54,9 @@ end
 if ~iscellstr(vpckgArguments) && ~isstring(vpckgArguments)
     vpckgArguments = cellstr(vpckgArguments);
 end
+
+dependencyPaths = resolveDependencyPaths(manifestFolder, vpckgArguments);
+rootArguments = '';
 
 experimentalArguments = unique(regexp(char(strjoin(vpckgArguments, ' ')), ...
     '(?<!\S)--x-(?:install|manifest|packages)-root(?==|\s|$)', ...
@@ -91,10 +106,10 @@ else
         qnxVersion = getenv('SLREALTIME_QNX_VERSION');
 
         if ispc
-            targetEnvRootBat = ['&& ',fullfile(qnxSpRoot,qnxVersion,'qnxsdp-env.bat')];
+            targetEnvRootBat = ['&& call "',fullfile(qnxSpRoot,qnxVersion,'qnxsdp-env.bat'),'"'];
         elseif isunix
             % Sourcing the .sh file for qcc compilation.
-            targetEnvRootBat = ['&& ',append('source ',fullfile(qnxSpRoot,qnxVersion,'qnxsdp-env.sh'))];
+            targetEnvRootBat = ['&& source "',fullfile(qnxSpRoot,qnxVersion,'qnxsdp-env.sh'),'"'];
         end
     elseif contains(targetTriplet, 'speedgoat-linux', 'IgnoreCase', true)
         if contains(targetTriplet, 'x64', 'IgnoreCase', true)
@@ -143,8 +158,13 @@ else
     end
 end
 
-% Select the dependency triplet explicitly, including for host builds
-targetTriplet = ['--triplet ', targetTriplet];
+dependencyPaths.hostDir = fullfile(dependencyPaths.installRoot, triplet);
+dependencyPaths.targetDir = fullfile(dependencyPaths.installRoot, targetTriplet);
+
+if ispc && contains(targetTriplet, 'qnx', 'IgnoreCase', true)
+    [vpckgArguments, rootArguments, mappingCleanup] = ...
+        mapQnxDependencyPaths(dependencyPaths, vpckgArguments); %#ok<ASGLU>
+end
 
 %% Setup and run vcpkg
 
@@ -159,10 +179,16 @@ else
 end
 
 % Build up vcpkg full command
-vcpkgCmd = ['cd ', manifestFolder, ' ',...
+if ispc
+    changeFolderCmd = ['cd /d "', manifestFolder, '"'];
+else
+    changeFolderCmd = ['cd "', manifestFolder, '"'];
+end
+vcpkgCmd = [changeFolderCmd, ' ',...
     targetEnvRootBat,...
-    ' && vcpkg install ',targetTriplet,' --host-triplet ', triplet,...
-    ' --overlay-triplets "', fullfile(vcpkg.getToolboxRoot,'overlay-triplets'), '" ', strjoin(vpckgArguments,' '), vcpkgDebugArg];
+    ' && vcpkg install --triplet ',targetTriplet,' --host-triplet ', triplet,...
+    ' --overlay-triplets "', fullfile(vcpkg.getToolboxRoot,'overlay-triplets'), '" ', ...
+    strjoin(vpckgArguments,' '), ' ', rootArguments, vcpkgDebugArg];
 
 if hasMSVC
     vcpkgCmd = [msvcSetupCmd, ' && ', vcpkgCmd];
@@ -176,8 +202,118 @@ if isunix && ~ismac
 else
     status = system(vcpkgCmd, '-echo');
 end
-assert(status == 0, 'Error running vcpkg command');
+if status ~= 0
+    error('vcpkg:buildVcpkgDeps:CommandFailed', ...
+        'Error running vcpkg command (exit status %d).', status);
+end
 
+end
+
+function paths = resolveDependencyPaths(manifestFolder, arguments)
+manifestFolder = absoluteFolder(manifestFolder, pwd);
+vcpkgRoot = absoluteFolder(getenv('VCPKG_ROOT'), pwd);
+paths = struct('installRoot', fullfile(manifestFolder, 'vcpkg_installed'), ...
+    'buildtreesRoot', fullfile(vcpkgRoot, 'buildtrees'), ...
+    'packagesRoot', fullfile(vcpkgRoot, 'packages'));
+forwarded = char(strjoin(arguments, ' '));
+names = {'install', 'buildtrees', 'packages'};
+for index = 1:numel(names)
+    pattern = ['(?<!\S)--(?:x-)?', names{index}, ...
+        '-root(?:=|\s+)(?<root>"[^"]*"|''[^'']*''|\S+)'];
+    tokens = regexp(forwarded, pattern, 'names');
+    if ~isempty(tokens)
+        if numel(tokens) > 1
+            error('vcpkg:buildVcpkgDeps:ConflictingRootArguments', ...
+                'Specify the %s root only once.', names{index});
+        end
+        root = tokens.root;
+        if startsWith(root, '"') || startsWith(root, '''')
+            root = root(2:end-1);
+        end
+        paths.([names{index}, 'Root']) = absoluteFolder(root, manifestFolder);
+    end
+end
+end
+
+function [arguments, rootArguments, cleanup] = mapQnxDependencyPaths(paths, arguments)
+names = {'install', 'buildtrees', 'packages'};
+cleanups = {};
+rootArguments = '';
+forwarded = char(strjoin(arguments, ' '));
+for index = 1:numel(names)
+    root = paths.([names{index}, 'Root']);
+    if isempty(regexp(root, '\s', 'once'))
+        continue
+    end
+    if ~isfolder(root)
+        [success, message] = mkdir(root);
+        if ~success
+            error('vcpkg:buildVcpkgDeps:CannotCreateRoot', '%s', message);
+        end
+    end
+    drive = createDriveMapping(root);
+    cleanups{end+1} = onCleanup(@() removeDriveMapping(drive, root)); %#ok<AGROW>
+    pattern = ['(?<!\S)--(?:x-)?', names{index}, ...
+        '-root(?:=|\s+)(?:"[^"]*"|''[^'']*''|\S+)'];
+    forwarded = regexprep(forwarded, pattern, '');
+    rootArguments = [rootArguments, sprintf(' --x-%s-root="%s/"', names{index}, drive)]; %#ok<AGROW>
+end
+arguments = {forwarded};
+% Transfer ownership without running the local cleanup objects prematurely.
+cleanup = cleanups;
+end
+
+function drive = createDriveMapping(root)
+% SUBST refuses occupied letters; it does not replace an existing mapping.
+for letter = 'Z':-1:'D'
+    drive = [letter, ':'];
+    [status, ~] = system(sprintf('subst %s "%s"', drive, root));
+    if status == 0
+        return
+    end
+end
+error('vcpkg:buildVcpkgDeps:DriveMappingFailed', ...
+    ['Cannot create a temporary drive mapping for QNX dependency folder %s. ', ...
+    'An unused drive letter and permission to run SUBST are required.'], root);
+end
+
+function removeDriveMapping(drive, root)
+% Remove only the mapping this invocation owns.
+[status, mappings] = system('subst');
+expected = [drive, '\: => ', root];
+if status == 0 && any(strcmpi(strtrim(splitlines(string(mappings))), expected))
+    [status, output] = system(['subst ', drive, ' /D']);
+    if status ~= 0
+        warning('vcpkg:buildVcpkgDeps:DriveMappingCleanupFailed', ...
+            'Cannot remove temporary drive %s: %s', drive, strtrim(output));
+    end
+end
+end
+
+function folder = absoluteFolder(folder, baseFolder)
+if ispc
+    isAbsolute = ~isempty(regexp(folder, '^(?:[A-Za-z]:[\\/]|[\\/]{2})', 'once'));
+else
+    isAbsolute = startsWith(folder, '/');
+end
+if ~isAbsolute
+    folder = fullfile(baseFolder, folder);
+end
+if isfolder(folder)
+    if isMATLABReleaseOlderThan('R2025a')
+        % Resolve paths on releases that do not provide filePermissions.
+        previousFolder = pwd;
+        folderCleanup = onCleanup(@() cd(previousFolder));
+        cd(folder);
+        folder = pwd;
+    else
+        permissions = filePermissions(folder);
+        folder = char(permissions.AbsolutePath);
+    end
+else
+    [parent, name, extension] = fileparts(folder);
+    folder = fullfile(absoluteFolder(parent, baseFolder), [name, extension]);
+end
 end
 
 function addToSystemPath(path)

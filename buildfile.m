@@ -56,8 +56,11 @@ plan("release") = Task( ...
     DisableIncremental=true, ...
     Outputs="release/vcpkg-wrapper-toolbox-v*.mltbx");
 
-% Run runtime and packaging verification by default.
-plan.DefaultTasks = ["check" "test" "packagingTest"];
+% Run all test tasks by default; GitHub Actions omits target integration.
+plan.DefaultTasks = ["check" "unit" "integration" "packagingTest"];
+if ~strcmpi(getenv("GITHUB_ACTIONS"), "true")
+    plan.DefaultTasks(end+1) = "integrationWithTarget";
+end
 
 end
 
