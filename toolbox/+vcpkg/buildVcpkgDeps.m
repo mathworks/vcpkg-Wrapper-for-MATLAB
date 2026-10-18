@@ -1,4 +1,4 @@
-function buildVcpkgDeps(manifestFolder, vpckgArguments, options)
+function dependencyPaths = buildVcpkgDeps(manifestFolder, vpckgArguments, options)
 %buildVcpkgDeps - Build vcpkg manifest dependencies for the host and target
 %   buildVcpkgDeps(manifestFolder) builds dependencies from the manifest
 %   in manifestFolder. Host libraries are dynamic and prefer Release-only
@@ -26,6 +26,19 @@ function buildVcpkgDeps(manifestFolder, vpckgArguments, options)
 %   with the --debug flag when TF is true. The default is false. Library
 %   build configuration is selected separately with buildRelease.
 %
+%   buildVcpkgDeps(..., dependencyRoot=FOLDER) installs dependencies in
+%   FOLDER/vcpkg_installed and uses FOLDER/buildtrees and FOLDER/packages
+%   for intermediate files. Relative FOLDER values resolve from the
+%   caller's current folder. The folders are created by vcpkg as needed.
+%   This option cannot be combined with forwarded root arguments.
+%   Windows QNX builds require these three paths to contain no whitespace.
+%   Without this option, the existing vcpkg default roots are used.
+%
+%   dependencyPaths = buildVcpkgDeps(...) returns a structure containing
+%   installRoot, buildtreesRoot, packagesRoot, hostDir, and targetDir as
+%   absolute character vectors. Use hostDir and targetDir to configure
+%   consumers when dependencies are installed outside the manifest folder.
+%
 %   See also getHostTriplet, getTargetTriplet
 
 % Copyright 2025 The MathWorks, Inc.
@@ -37,11 +50,15 @@ arguments
     options.buildRelease (1,1) logical = true;
     options.buildHostOnly (1,1) logical = false;
     options.vcpkgDebug (1,1) logical = false;
+    options.dependencyRoot {mustBeTextScalar} = '';
 end
 
 if ~iscellstr(vpckgArguments) && ~isstring(vpckgArguments)
     vpckgArguments = cellstr(vpckgArguments);
 end
+
+[dependencyPaths, rootArguments] = resolveDependencyPaths( ...
+    manifestFolder, vpckgArguments, char(options.dependencyRoot));
 
 experimentalArguments = unique(regexp(char(strjoin(vpckgArguments, ' ')), ...
     '(?<!\S)--x-(?:install|manifest|packages)-root(?==|\s|$)', ...
@@ -84,6 +101,18 @@ else
         targetTriplet = triplet;
     end
 
+    if ispc && contains(targetTriplet, 'qnx', 'IgnoreCase', true)
+        roots = {dependencyPaths.installRoot, dependencyPaths.buildtreesRoot, ...
+            dependencyPaths.packagesRoot};
+        if any(cellfun(@(root) ~isempty(regexp(root, '\s', 'once')), roots))
+            error('vcpkg:buildVcpkgDeps:QnxPathContainsWhitespace', ...
+                ['Windows QNX compilers reject paths containing whitespace. ', ...
+                'Set dependencyRoot to a folder without whitespace in its ', ...
+                'absolute path. Install root: %s; buildtrees root: %s; ', ...
+                'packages root: %s.'], roots{:});
+        end
+    end
+
     if contains(targetTriplet, 'qnx', 'IgnoreCase', true)
         % Using QNX with Simulink Real-Time Target Support Package
         slrealtime.qnxSetupFcn;
@@ -91,10 +120,10 @@ else
         qnxVersion = getenv('SLREALTIME_QNX_VERSION');
 
         if ispc
-            targetEnvRootBat = ['&& ',fullfile(qnxSpRoot,qnxVersion,'qnxsdp-env.bat')];
+            targetEnvRootBat = ['&& call "',fullfile(qnxSpRoot,qnxVersion,'qnxsdp-env.bat'),'"'];
         elseif isunix
             % Sourcing the .sh file for qcc compilation.
-            targetEnvRootBat = ['&& ',append('source ',fullfile(qnxSpRoot,qnxVersion,'qnxsdp-env.sh'))];
+            targetEnvRootBat = ['&& source "',fullfile(qnxSpRoot,qnxVersion,'qnxsdp-env.sh'),'"'];
         end
     elseif contains(targetTriplet, 'speedgoat-linux', 'IgnoreCase', true)
         if contains(targetTriplet, 'x64', 'IgnoreCase', true)
@@ -143,8 +172,8 @@ else
     end
 end
 
-% Select the dependency triplet explicitly, including for host builds
-targetTriplet = ['--triplet ', targetTriplet];
+dependencyPaths.hostDir = fullfile(dependencyPaths.installRoot, triplet);
+dependencyPaths.targetDir = fullfile(dependencyPaths.installRoot, targetTriplet);
 
 %% Setup and run vcpkg
 
@@ -159,10 +188,16 @@ else
 end
 
 % Build up vcpkg full command
-vcpkgCmd = ['cd ', manifestFolder, ' ',...
+if ispc
+    changeFolderCmd = ['cd /d "', manifestFolder, '"'];
+else
+    changeFolderCmd = ['cd "', manifestFolder, '"'];
+end
+vcpkgCmd = [changeFolderCmd, ' ',...
     targetEnvRootBat,...
-    ' && vcpkg install ',targetTriplet,' --host-triplet ', triplet,...
-    ' --overlay-triplets "', fullfile(vcpkg.getToolboxRoot,'overlay-triplets'), '" ', strjoin(vpckgArguments,' '), vcpkgDebugArg];
+    ' && vcpkg install --triplet ',targetTriplet,' --host-triplet ', triplet,...
+    ' --overlay-triplets "', fullfile(vcpkg.getToolboxRoot,'overlay-triplets'), '" ', ...
+    strjoin(vpckgArguments,' '), ' ', rootArguments, vcpkgDebugArg];
 
 if hasMSVC
     vcpkgCmd = [msvcSetupCmd, ' && ', vcpkgCmd];
@@ -178,6 +213,65 @@ else
 end
 assert(status == 0, 'Error running vcpkg command');
 
+end
+
+function [paths, rootArguments] = resolveDependencyPaths(manifestFolder, arguments, dependencyRoot)
+manifestFolder = absoluteFolder(manifestFolder, pwd);
+vcpkgRoot = absoluteFolder(getenv('VCPKG_ROOT'), pwd);
+paths = struct('installRoot', fullfile(manifestFolder, 'vcpkg_installed'), ...
+    'buildtreesRoot', fullfile(vcpkgRoot, 'buildtrees'), ...
+    'packagesRoot', fullfile(vcpkgRoot, 'packages'));
+rootArguments = '';
+forwarded = char(strjoin(arguments, ' '));
+names = {'install', 'buildtrees', 'packages'};
+for index = 1:numel(names)
+    pattern = ['(?<!\S)--(?:x-)?', names{index}, ...
+        '-root(?:=|\s+)(?<root>"[^"]*"|''[^'']*''|\S+)'];
+    tokens = regexp(forwarded, pattern, 'names');
+    if ~isempty(tokens)
+        if ~isempty(dependencyRoot)
+            error('vcpkg:buildVcpkgDeps:ConflictingRootArguments', ...
+                'dependencyRoot cannot be combined with forwarded --%s-root arguments.', ...
+                names{index});
+        end
+        if numel(tokens) > 1
+            error('vcpkg:buildVcpkgDeps:ConflictingRootArguments', ...
+                'Specify the %s root only once.', names{index});
+        end
+        root = tokens.root;
+        if startsWith(root, '"') || startsWith(root, '''')
+            root = root(2:end-1);
+        end
+        paths.([names{index}, 'Root']) = absoluteFolder(root, manifestFolder);
+    end
+end
+if ~isempty(dependencyRoot)
+    dependencyRoot = absoluteFolder(dependencyRoot, pwd);
+    paths.installRoot = fullfile(dependencyRoot, 'vcpkg_installed');
+    paths.buildtreesRoot = fullfile(dependencyRoot, 'buildtrees');
+    paths.packagesRoot = fullfile(dependencyRoot, 'packages');
+    rootArguments = sprintf( ...
+        '--x-install-root="%s" --x-buildtrees-root="%s" --x-packages-root="%s"', ...
+        paths.installRoot, paths.buildtreesRoot, paths.packagesRoot);
+end
+end
+
+function folder = absoluteFolder(folder, baseFolder)
+if ispc
+    isAbsolute = ~isempty(regexp(folder, '^(?:[A-Za-z]:[\\/]|[\\/]{2})', 'once'));
+else
+    isAbsolute = startsWith(folder, '/');
+end
+if ~isAbsolute
+    folder = fullfile(baseFolder, folder);
+end
+[exists, attributes] = fileattrib(folder);
+if exists
+    folder = attributes.Name;
+else
+    [parent, name, extension] = fileparts(folder);
+    folder = fullfile(absoluteFolder(parent, baseFolder), [name, extension]);
+end
 end
 
 function addToSystemPath(path)

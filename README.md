@@ -133,6 +133,47 @@ vcpkg.buildVcpkgDeps('path/to/manifest', 'vcpkgDebug', true)
 
 The option previously named `debug` is now named `vcpkgDebug`; update existing calls accordingly.
 
+### Dependency folders and Windows QNX builds
+
+Windows QNX compiler drivers reject include paths containing whitespace even
+when quoted. The default MATLAB add-on folder contains spaces. For those
+builds, set `dependencyRoot` to a folder whose absolute path has no whitespace:
+
+```matlab
+paths = vcpkg.buildVcpkgDeps('path/to/manifest', ...
+    'dependencyRoot', 'C:/vcpkg-deps/my-interface');
+```
+
+The wrapper installs dependencies in `dependencyRoot/vcpkg_installed` and uses
+`dependencyRoot/buildtrees` and `dependencyRoot/packages` for build and staging
+files. A relative `dependencyRoot` resolves from the caller's current folder.
+The manifest and overlay folders can retain their original locations with
+spaces. Without this option, vcpkg's existing default folders are retained.
+QNX builds fail early with `vcpkg:buildVcpkgDeps:QnxPathContainsWhitespace` if
+any effective install, buildtrees, or package path contains whitespace.
+Host-only builds continue to support dependency paths with spaces.
+
+The optional output returns absolute `installRoot`, `buildtreesRoot`,
+`packagesRoot`, `hostDir`, and `targetDir` paths. Configure consumers with the
+returned triplet folders. For the librdkafka Interface for Simulink:
+
+```matlab
+s = settings;
+s.LibrdkafkaSimulinkInterface.HostLibrdkafkaDir.PersonalValue = paths.hostDir;
+s.LibrdkafkaSimulinkInterface.TargetLibrdkafkaDir.PersonalValue = paths.targetDir;
+```
+
+These settings persist across MATLAB sessions. Other consumers should likewise
+use `paths.hostDir` and `paths.targetDir` instead of assuming a toolbox-local
+installation. The wrapper does not change consumer settings automatically.
+
+The option encapsulates vcpkg's `--x-install-root`, `--x-buildtrees-root`, and
+`--x-packages-root` flags. Do not combine `dependencyRoot` with forwarded root
+flags. Existing forwarded root arguments remain supported and are reflected
+in the output paths. To verify a fresh source build, pass
+`'--binarysource=clear'` as the second positional argument and use a new
+dependency root; restoring cached packages does not exercise the QNX compiler.
+
 ## Testing
 Open `VcpkgToolbox.prj` in MATLAB before running tests. `buildfile.m` is the entry point:
 
