@@ -299,9 +299,17 @@ end
 if ~isAbsolute
     folder = fullfile(baseFolder, folder);
 end
-[exists, attributes] = fileattrib(folder);
-if exists
-    folder = attributes.Name;
+if isfolder(folder)
+    if isMATLABReleaseOlderThan('R2025a')
+        % Resolve paths on releases that do not provide filePermissions.
+        previousFolder = pwd;
+        folderCleanup = onCleanup(@() cd(previousFolder));
+        cd(folder);
+        folder = pwd;
+    else
+        permissions = filePermissions(folder);
+        folder = char(permissions.AbsolutePath);
+    end
 else
     [parent, name, extension] = fileparts(folder);
     folder = fullfile(absoluteFolder(parent, baseFolder), [name, extension]);
