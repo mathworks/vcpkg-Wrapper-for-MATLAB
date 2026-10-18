@@ -26,18 +26,17 @@ function dependencyPaths = buildVcpkgDeps(manifestFolder, vpckgArguments, option
 %   with the --debug flag when TF is true. The default is false. Library
 %   build configuration is selected separately with buildRelease.
 %
-%   buildVcpkgDeps(..., dependencyRoot=FOLDER) installs dependencies in
-%   FOLDER/vcpkg_installed and uses FOLDER/buildtrees and FOLDER/packages
-%   for intermediate files. Relative FOLDER values resolve from the
-%   caller's current folder. The folders are created by vcpkg as needed.
-%   This option cannot be combined with forwarded root arguments.
-%   Windows QNX builds require these three paths to contain no whitespace.
-%   Without this option, the existing vcpkg default roots are used.
+%   buildVcpkgDeps(...) automatically maps Windows QNX dependency folders
+%   containing whitespace to temporary drive letters while building. The
+%   libraries remain in the original vcpkg folders, and the mappings are
+%   removed on completion or error. Each affected root requires an unused
+%   drive letter. Forwarded root arguments can still select other folders.
 %
 %   dependencyPaths = buildVcpkgDeps(...) returns a structure containing
 %   installRoot, buildtreesRoot, packagesRoot, hostDir, and targetDir as
 %   absolute character vectors. Use hostDir and targetDir to configure
 %   consumers when dependencies are installed outside the manifest folder.
+%   These paths refer to the physical folders, not temporary drive letters.
 %
 %   See also getHostTriplet, getTargetTriplet
 
@@ -50,15 +49,14 @@ arguments
     options.buildRelease (1,1) logical = true;
     options.buildHostOnly (1,1) logical = false;
     options.vcpkgDebug (1,1) logical = false;
-    options.dependencyRoot {mustBeTextScalar} = '';
 end
 
 if ~iscellstr(vpckgArguments) && ~isstring(vpckgArguments)
     vpckgArguments = cellstr(vpckgArguments);
 end
 
-[dependencyPaths, rootArguments] = resolveDependencyPaths( ...
-    manifestFolder, vpckgArguments, char(options.dependencyRoot));
+dependencyPaths = resolveDependencyPaths(manifestFolder, vpckgArguments);
+rootArguments = '';
 
 experimentalArguments = unique(regexp(char(strjoin(vpckgArguments, ' ')), ...
     '(?<!\S)--x-(?:install|manifest|packages)-root(?==|\s|$)', ...
@@ -99,18 +97,6 @@ else
     targetTriplet = vcpkg.getTargetTriplet;
     if isempty(targetTriplet)
         targetTriplet = triplet;
-    end
-
-    if ispc && contains(targetTriplet, 'qnx', 'IgnoreCase', true)
-        roots = {dependencyPaths.installRoot, dependencyPaths.buildtreesRoot, ...
-            dependencyPaths.packagesRoot};
-        if any(cellfun(@(root) ~isempty(regexp(root, '\s', 'once')), roots))
-            error('vcpkg:buildVcpkgDeps:QnxPathContainsWhitespace', ...
-                ['Windows QNX compilers reject paths containing whitespace. ', ...
-                'Set dependencyRoot to a folder without whitespace in its ', ...
-                'absolute path. Install root: %s; buildtrees root: %s; ', ...
-                'packages root: %s.'], roots{:});
-        end
     end
 
     if contains(targetTriplet, 'qnx', 'IgnoreCase', true)
@@ -175,6 +161,11 @@ end
 dependencyPaths.hostDir = fullfile(dependencyPaths.installRoot, triplet);
 dependencyPaths.targetDir = fullfile(dependencyPaths.installRoot, targetTriplet);
 
+if ispc && contains(targetTriplet, 'qnx', 'IgnoreCase', true)
+    [vpckgArguments, rootArguments, mappingCleanup] = ...
+        mapQnxDependencyPaths(dependencyPaths, vpckgArguments); %#ok<ASGLU>
+end
+
 %% Setup and run vcpkg
 
 % Add vcpkg to path
@@ -211,17 +202,19 @@ if isunix && ~ismac
 else
     status = system(vcpkgCmd, '-echo');
 end
-assert(status == 0, 'Error running vcpkg command');
+if status ~= 0
+    error('vcpkg:buildVcpkgDeps:CommandFailed', ...
+        'Error running vcpkg command (exit status %d).', status);
+end
 
 end
 
-function [paths, rootArguments] = resolveDependencyPaths(manifestFolder, arguments, dependencyRoot)
+function paths = resolveDependencyPaths(manifestFolder, arguments)
 manifestFolder = absoluteFolder(manifestFolder, pwd);
 vcpkgRoot = absoluteFolder(getenv('VCPKG_ROOT'), pwd);
 paths = struct('installRoot', fullfile(manifestFolder, 'vcpkg_installed'), ...
     'buildtreesRoot', fullfile(vcpkgRoot, 'buildtrees'), ...
     'packagesRoot', fullfile(vcpkgRoot, 'packages'));
-rootArguments = '';
 forwarded = char(strjoin(arguments, ' '));
 names = {'install', 'buildtrees', 'packages'};
 for index = 1:numel(names)
@@ -229,11 +222,6 @@ for index = 1:numel(names)
         '-root(?:=|\s+)(?<root>"[^"]*"|''[^'']*''|\S+)'];
     tokens = regexp(forwarded, pattern, 'names');
     if ~isempty(tokens)
-        if ~isempty(dependencyRoot)
-            error('vcpkg:buildVcpkgDeps:ConflictingRootArguments', ...
-                'dependencyRoot cannot be combined with forwarded --%s-root arguments.', ...
-                names{index});
-        end
         if numel(tokens) > 1
             error('vcpkg:buildVcpkgDeps:ConflictingRootArguments', ...
                 'Specify the %s root only once.', names{index});
@@ -245,14 +233,60 @@ for index = 1:numel(names)
         paths.([names{index}, 'Root']) = absoluteFolder(root, manifestFolder);
     end
 end
-if ~isempty(dependencyRoot)
-    dependencyRoot = absoluteFolder(dependencyRoot, pwd);
-    paths.installRoot = fullfile(dependencyRoot, 'vcpkg_installed');
-    paths.buildtreesRoot = fullfile(dependencyRoot, 'buildtrees');
-    paths.packagesRoot = fullfile(dependencyRoot, 'packages');
-    rootArguments = sprintf( ...
-        '--x-install-root="%s" --x-buildtrees-root="%s" --x-packages-root="%s"', ...
-        paths.installRoot, paths.buildtreesRoot, paths.packagesRoot);
+end
+
+function [arguments, rootArguments, cleanup] = mapQnxDependencyPaths(paths, arguments)
+names = {'install', 'buildtrees', 'packages'};
+cleanups = {};
+rootArguments = '';
+forwarded = char(strjoin(arguments, ' '));
+for index = 1:numel(names)
+    root = paths.([names{index}, 'Root']);
+    if isempty(regexp(root, '\s', 'once'))
+        continue
+    end
+    if ~isfolder(root)
+        [success, message] = mkdir(root);
+        if ~success
+            error('vcpkg:buildVcpkgDeps:CannotCreateRoot', '%s', message);
+        end
+    end
+    drive = createDriveMapping(root);
+    cleanups{end+1} = onCleanup(@() removeDriveMapping(drive, root)); %#ok<AGROW>
+    pattern = ['(?<!\S)--(?:x-)?', names{index}, ...
+        '-root(?:=|\s+)(?:"[^"]*"|''[^'']*''|\S+)'];
+    forwarded = regexprep(forwarded, pattern, '');
+    rootArguments = [rootArguments, sprintf(' --x-%s-root="%s/"', names{index}, drive)]; %#ok<AGROW>
+end
+arguments = {forwarded};
+% Transfer ownership without running the local cleanup objects prematurely.
+cleanup = cleanups;
+end
+
+function drive = createDriveMapping(root)
+% SUBST refuses occupied letters; it does not replace an existing mapping.
+for letter = 'Z':-1:'D'
+    drive = [letter, ':'];
+    [status, ~] = system(sprintf('subst %s "%s"', drive, root));
+    if status == 0
+        return
+    end
+end
+error('vcpkg:buildVcpkgDeps:DriveMappingFailed', ...
+    ['Cannot create a temporary drive mapping for QNX dependency folder %s. ', ...
+    'An unused drive letter and permission to run SUBST are required.'], root);
+end
+
+function removeDriveMapping(drive, root)
+% Remove only the mapping this invocation owns.
+[status, mappings] = system('subst');
+expected = [drive, '\: => ', root];
+if status == 0 && any(strcmpi(strtrim(splitlines(string(mappings))), expected))
+    [status, output] = system(['subst ', drive, ' /D']);
+    if status ~= 0
+        warning('vcpkg:buildVcpkgDeps:DriveMappingCleanupFailed', ...
+            'Cannot remove temporary drive %s: %s', drive, strtrim(output));
+    end
 end
 end
 

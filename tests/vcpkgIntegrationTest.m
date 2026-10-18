@@ -52,18 +52,14 @@ classdef vcpkgIntegrationTest < matlab.unittest.TestCase
             testCase.verifyEqual(paths.targetDir, paths.hostDir);
         end
 
-        function buildsHostInDependencyRoot(testCase)
+        function buildsHostWithSpaces(testCase)
             copyfile('manifest', 'manifest space');
 
             paths = vcpkg.buildVcpkgDeps('manifest space', ...
-                'dependencyRoot', "dependency space", 'buildHostOnly', true);
+                'buildHostOnly', true);
 
             testCase.verifyEqual(paths.installRoot, ...
-                fullfile(pwd, 'dependency space', 'vcpkg_installed'));
-            testCase.verifyEqual(paths.buildtreesRoot, ...
-                fullfile(pwd, 'dependency space', 'buildtrees'));
-            testCase.verifyEqual(paths.packagesRoot, ...
-                fullfile(pwd, 'dependency space', 'packages'));
+                fullfile(pwd, 'manifest space', 'vcpkg_installed'));
             testCase.verifyTrue(isfile(fullfile(paths.hostDir, 'include', 'fmt', 'format.h')));
             testCase.verifyNotEmpty(findSharedLibraries(paths.hostDir));
             testCase.verifyEqual(paths.targetDir, paths.hostDir);
@@ -87,48 +83,49 @@ classdef vcpkgIntegrationTest < matlab.unittest.TestCase
     end
 
     methods (Test, TestTags = {'TargetIntegration'})
-        function rejectsDefaultQnxRootWithSpaces(testCase)
+        function buildsDefaultQnxRootWithSpaces(testCase)
             assumeWindowsQnx(testCase);
             copyfile('manifest', 'manifest space');
 
-            testCase.verifyError(@() vcpkg.buildVcpkgDeps('manifest space'), ...
-                'vcpkg:buildVcpkgDeps:QnxPathContainsWhitespace');
-        end
+            [~, before] = system('subst');
 
-        function rejectsExplicitQnxRootWithSpaces(testCase)
-            assumeWindowsQnx(testCase);
+            paths = vcpkg.buildVcpkgDeps('manifest space', '--binarysource=clear');
 
-            testCase.verifyError(@() vcpkg.buildVcpkgDeps('manifest', ...
-                'dependencyRoot', 'dependency space'), ...
-                'vcpkg:buildVcpkgDeps:QnxPathContainsWhitespace');
-        end
-
-        function rejectsForwardedQnxRootWithSpaces(testCase)
-            assumeWindowsQnx(testCase);
-
-            testCase.verifyError(@() vcpkg.buildVcpkgDeps('manifest', ...
-                '--x-install-root="../install space"'), ...
-                'vcpkg:buildVcpkgDeps:QnxPathContainsWhitespace');
-        end
-
-        function buildsTargetInDependencyRoot(testCase)
-            targetTriplet = vcpkg.getTargetTriplet();
-            testCase.assumeNotEmpty(targetTriplet, 'No supported embedded target is installed.');
-            copyfile('manifest', 'manifest space');
-
-            paths = vcpkg.buildVcpkgDeps('manifest space', '--binarysource=clear', ...
-                'dependencyRoot', 'dependencies');
-
+            [~, after] = system('subst');
+            testCase.verifyEqual(after, before);
             testCase.verifyEqual(paths.installRoot, ...
-                fullfile(pwd, 'dependencies', 'vcpkg_installed'));
-            testCase.verifyEqual(paths.hostDir, ...
-                fullfile(paths.installRoot, vcpkg.getHostTriplet()));
-            testCase.verifyEqual(paths.targetDir, fullfile(paths.installRoot, targetTriplet));
+                fullfile(pwd, 'manifest space', 'vcpkg_installed'));
             testCase.verifyTrue(isfile(fullfile(paths.targetDir, 'include', 'fmt', 'format.h')));
             testCase.verifyNotEmpty(findLinkLibraries(paths.targetDir));
-            testCase.verifyEmpty(findSharedLibraries(paths.targetDir));
-            testCase.verifyTrue(isfolder(paths.buildtreesRoot));
-            testCase.verifyTrue(isfolder(paths.packagesRoot));
+        end
+
+        function buildsForwardedQnxRootsWithSpaces(testCase)
+            assumeWindowsQnx(testCase);
+            [~, before] = system('subst');
+
+            paths = vcpkg.buildVcpkgDeps('manifest', ...
+                {'--x-install-root="../install space"', ...
+                '--x-buildtrees-root="../build space"', ...
+                '--x-packages-root="../package space"', '--binarysource=clear'});
+
+            [~, after] = system('subst');
+            testCase.verifyEqual(after, before);
+            testCase.verifyEqual(paths.installRoot, fullfile(pwd, 'install space'));
+            testCase.verifyEqual(paths.buildtreesRoot, fullfile(pwd, 'build space'));
+            testCase.verifyEqual(paths.packagesRoot, fullfile(pwd, 'package space'));
+            testCase.verifyNotEmpty(findLinkLibraries(paths.targetDir));
+        end
+
+        function removesQnxMappingAfterBuildFailure(testCase)
+            assumeWindowsQnx(testCase);
+            copyfile('manifest', 'manifest space');
+            [~, before] = system('subst');
+
+            testCase.verifyError(@() vcpkg.buildVcpkgDeps('manifest space', ...
+                '--invalid-vcpkg-option'), 'vcpkg:buildVcpkgDeps:CommandFailed');
+
+            [~, after] = system('subst');
+            testCase.verifyEqual(after, before);
         end
 
         function buildsStaticTargetLibraries(testCase, buildDynamic, buildRelease)
