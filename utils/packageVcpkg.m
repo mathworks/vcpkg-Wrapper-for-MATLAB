@@ -21,7 +21,7 @@ end
 
 [metadata, version] = readVcpkgPackage(rootFolder, version);
 versionText = string(version);
-artifactBase = "vcpkg-wrapper-toolbox-v" + versionText;
+artifactBase = metadata.name + "-" + versionText;
 workFolder = fullfile(rootFolder, "work");
 if ~isfolder(workFolder)
     mkdir(workFolder);

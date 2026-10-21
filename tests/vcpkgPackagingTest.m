@@ -102,7 +102,7 @@ classdef vcpkgPackagingTest < matlab.unittest.TestCase
         function buildKeepsFilenameAndReturnType(testCase)
             version = matlab.mpm.Version('1.2.3');
             output = fullfile(testCase.OutputFolder, ...
-                "vcpkg-wrapper-toolbox-v" + string(version) + ".mltbx");
+                "vcpkgWrapper-" + string(version) + ".mltbx");
 
             [artifact, opts] = packageVcpkg(testCase.RootFolder, version, ...
                 'OutputFolder', testCase.OutputFolder);
@@ -111,7 +111,7 @@ classdef vcpkgPackagingTest < matlab.unittest.TestCase
             testCase.verifyEqual(artifact, output);
             testCase.verifyTrue(isfile(output));
             testCase.verifyEqual(relativeFiles(testCase.OutputFolder), ...
-                "vcpkg-wrapper-toolbox-v" + string(version) + ".mltbx");
+                "vcpkgWrapper-" + string(version) + ".mltbx");
             testCase.verifyEqual(string(opts.OutputFile), output);
             testCase.verifyEqual(matlab.addons.toolbox.toolboxVersion(output), char(string(version)));
         end
