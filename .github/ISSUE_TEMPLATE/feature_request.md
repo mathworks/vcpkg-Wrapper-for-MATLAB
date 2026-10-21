@@ -1,20 +1,48 @@
 ---
-name: Feature request
-about: Suggest an idea for this project
+name: MATLAB toolbox feature request
+about: Suggest an improvement to the MATLAB API, installation, or dependency-build workflow
 title: ''
 labels: enhancement
 assignees: ''
 
 ---
 
-**Is your feature request related to a problem? Please describe.**
-A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
+<!-- Replace the prompts with your details. Omit fields that do not apply. -->
 
-**Describe the solution you'd like**
-A clear and concise description of what you want to happen.
+## MATLAB workflow and problem
 
-**Describe alternatives you've considered**
-A clear and concise description of any alternative solutions or features you've considered.
+Describe what you are trying to do with vcpkg Wrapper for MATLAB, the current
+limitation, and how it affects your workflow.
 
-**Additional context**
-Add any other context or screenshots about the feature request here.
+## Proposed improvement
+
+Describe the behavior you would like. Indicate whether the request concerns
+installation, the MATLAB API, dependency configuration, host builds, embedded
+target builds, or documentation.
+
+If the request changes the MATLAB API, show an example of the proposed usage:
+
+```matlab
+% Example of how you would like to use the toolbox.
+```
+
+## Relevant environment
+
+Include details that affect the request:
+
+- MATLAB release:
+- Wrapper version:
+- Operating system and architecture:
+- Installation method:
+- Compiler or target toolchain, if applicable:
+- Required linkage or build configuration, if applicable:
+
+## Expected result
+
+Give a concrete example of the result that would make this improvement useful.
+Mention any need to preserve existing calls or support particular MATLAB releases.
+
+## Alternatives and additional context
+
+Describe any workaround or alternative you have tried. Include a small example
+manifest, relevant documentation links, or other context when helpful.
