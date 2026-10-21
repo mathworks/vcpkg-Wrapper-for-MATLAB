@@ -6,12 +6,13 @@ This toolbox wraps [vcpkg - Open source C/C++ dependency manager from Microsoft&
 The wrapper selects host and target triplets and configures compiler paths automatically. Install vcpkg and a supported compiler, and set `VCPKG_ROOT` to the vcpkg installation folder. The wrapper adds that folder to the system path when building dependencies.
 
 ## Setup
-MATLAB Package Manager (MPM) is the primary installation mechanism for developers
-using MATLAB R2024b or newer. Releases distribute a single `.mltbx` installer
-for MATLAB R2020b or newer, including the MPM package definition, runtime code,
-and Getting Started guide.
+Use MATLAB Package Manager (MPM) only in MATLAB R2026b or newer. For MATLAB
+R2020b through R2026a, use the standard `.mltbx` toolbox installation described
+below. Releases distribute a single `.mltbx` installer for MATLAB R2020b or
+newer, including the MPM package definition, runtime code, and Getting Started
+guide.
 
-### MPM installation (MATLAB R2024b+)
+### MPM installation (MATLAB R2026b+)
 
 Install directly from a local clone, passing the **toolbox folder** as the package
 root. Its definition is `toolbox/resources/mpackage.json`:
@@ -244,10 +245,11 @@ It prunes checks already completed by CI, and publishes the installer
 as a GitHub release asset. Neither workflow publishes to an MPM repository or
 File Exchange.
 
-Runtime compatibility remains R2020b+, while MPM installation and artifact
-authoring require R2024b+. The existing desktop Windows, Linux, and macOS support
-is retained; MATLAB Online is not supported because the wrapper needs external
-tools. The legacy `.prj` format remains supported across these releases.
+Runtime compatibility and standard `.mltbx` installation remain R2020b+.
+MPM installation requires R2026b+, while artifact authoring requires R2024b+.
+The existing desktop Windows, Linux, and macOS support is retained; MATLAB
+Online is not supported because the wrapper needs external tools. The legacy
+`.prj` format remains supported across these releases.
 
 ## Community Support
 [MATLAB Central](https://www.mathworks.com/matlabcentral)
