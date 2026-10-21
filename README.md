@@ -14,33 +14,32 @@ guide.
 
 ### MPM installation (MATLAB R2026b+)
 
-Install directly from a local clone, passing the **toolbox folder** as the package
-root. Its definition is `toolbox/resources/mpackage.json`:
+With an internet connection and access to the File Exchange repository, install
+the package from MATLAB:
 
 ```matlab
-pkg = mpminstall("C:/path/to/vcpkg-Wrapper-for-MATLAB/toolbox", Prompt=false);
-mpmlist("vcpkgWrapper")
-vcpkg.getToolboxRoot()
+mpminstall vcpkgWrapper
 ```
 
-For an editable developer installation, keep the clone in a permanent location:
+For an editable developer installation, keep the clone in a permanent location
+and pass the **toolbox folder** as the package root. Its definition is
+`toolbox/resources/mpackage.json`:
 
 ```matlab
 pkg = mpminstall("C:/path/to/vcpkg-Wrapper-for-MATLAB/toolbox", ...
     Editable=true, InPlace=true, Prompt=false);
 ```
 
-The `.mltbx` release includes `resources/mpackage.json` in its toolbox hierarchy.
-GitHub release assets are downloadable distribution files, not an indexed MPM
-repository. Installing by the name `"vcpkgWrapper"` alone
-requires publishing to a configured MPM repository.
-
 ### Toolbox installation (MATLAB R2020b+)
+
+The `.mltbx` method is preferred for offline computers and is also supported in
+MATLAB R2020b or newer.
 
 Download the `.mltbx` installer from
 [GitHub Releases](https://github.com/mathworks/vcpkg-Wrapper-for-MATLAB/releases) or
-[File Exchange](https://www.mathworks.com/matlabcentral/fileexchange/182780-vcpkg-wrapper-for-matlab)
-and double-click it in MATLAB, or run:
+[File Exchange](https://www.mathworks.com/matlabcentral/fileexchange/182780-vcpkg-wrapper-for-matlab).
+For an offline computer, download it on a computer with internet access and
+transfer the installer to the offline computer. Double-click it in MATLAB, or run:
 
 ```matlab
 matlab.addons.toolbox.installToolbox("vcpkgWrapper-X.Y.Z.mltbx");
@@ -143,52 +142,6 @@ vcpkg.buildVcpkgDeps('path/to/manifest', 'vcpkgDebug', true)
 ```
 
 The option previously named `debug` is now named `vcpkgDebug`; update existing calls accordingly.
-
-### Dependency folders and Windows QNX builds
-
-Windows QNX compiler drivers reject paths containing whitespace even when
-quoted. The wrapper automatically uses temporary Windows drive mappings for
-affected install, buildtrees, and package folders during QNX builds:
-
-```matlab
-paths = vcpkg.buildVcpkgDeps('path/to/manifest');
-```
-
-Dependencies remain in the manifest's `vcpkg_installed` folder. Buildtrees and
-package staging retain their vcpkg defaults. The manifest and overlay folders
-can contain spaces. Windows short names are insufficient here because vcpkg
-expands them back to paths with spaces; temporary drive mappings survive that
-normalization and also work when short names are disabled.
-
-Each affected root requires an unused drive letter between D: and Z: and
-permission to run Windows `subst`. Existing drives are preserved. The wrapper
-removes its mappings on completion or failure. If no mapping can be created,
-it reports `vcpkg:buildVcpkgDeps:DriveMappingFailed`. Host-only builds use their
-ordinary paths.
-
-The optional output returns absolute `installRoot`, `buildtreesRoot`,
-`packagesRoot`, `hostDir`, and `targetDir` paths, always referring to physical
-folders rather than temporary drives. By default, `hostDir` and `targetDir` are
-triplet subfolders under the manifest's `vcpkg_installed` folder. For host-only
-builds or when no supported target is detected, `targetDir` equals `hostDir`.
-Configure consumers with these returned folders, including when forwarding a
-custom install root. For the librdkafka Interface for Simulink:
-
-```matlab
-s = settings;
-s.LibrdkafkaSimulinkInterface.HostLibrdkafkaDir.PersonalValue = paths.hostDir;
-s.LibrdkafkaSimulinkInterface.TargetLibrdkafkaDir.PersonalValue = paths.targetDir;
-```
-
-These settings persist across MATLAB sessions. Other consumers should likewise
-use `paths.hostDir` and `paths.targetDir` instead of assuming a toolbox-local
-installation. The wrapper does not change consumer settings automatically.
-
-Forwarded `--x-install-root`, `--x-buildtrees-root`, and `--x-packages-root`
-arguments remain supported, including paths with spaces. To verify a fresh
-source build, pass `'--binarysource=clear'` as the second positional argument
-and use a fresh manifest or installation folder; restoring cached packages
-does not exercise the QNX compiler.
 
 ## Testing
 Open `VcpkgToolbox.prj` in MATLAB before running tests. `buildfile.m` is the entry point:
