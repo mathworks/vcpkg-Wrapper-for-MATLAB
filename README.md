@@ -2,8 +2,8 @@
 
 [![View vcpkg Wrapper for MATLAB on File Exchange](https://www.mathworks.com/matlabcentral/images/matlab-file-exchange.svg)](https://www.mathworks.com/matlabcentral/fileexchange/182780-vcpkg-wrapper-for-matlab)
 
-This simple toolbox wraps [vcpkg - Open source C/C++ dependency manager from Microsoft&reg;](https://vcpkg.io/en/index.html) to ease the integration into MATLAB projects that use vcpkg [manifest mode](https://learn.microsoft.com/en-us/vcpkg/concepts/manifest-mode) to define its dependencies.
-The wrapper toolbox figures out the host and target triplets as well as the compiler paths automatically. It only requires vcpkg to be available on the system's path.
+This toolbox wraps [vcpkg - Open source C/C++ dependency manager from Microsoft&reg;](https://vcpkg.io/en/index.html) for MATLAB projects that use vcpkg [manifest mode](https://learn.microsoft.com/en-us/vcpkg/concepts/manifest-mode) to define their C/C++ dependencies.
+The wrapper selects host and target triplets and configures compiler paths automatically. Install vcpkg and a supported compiler, and set `VCPKG_ROOT` to the vcpkg installation folder. The wrapper adds that folder to the system path when building dependencies.
 
 ## Setup
 MATLAB Package Manager (MPM) is the primary installation mechanism for developers
@@ -42,22 +42,28 @@ Download the `.mltbx` installer from
 and double-click it in MATLAB, or run:
 
 ```matlab
-matlab.addons.toolbox.installToolbox("vcpkg-wrapper-toolbox-vX.Y.Z.mltbx");
+matlab.addons.toolbox.installToolbox("vcpkgWrapper-X.Y.Z.mltbx");
 vcpkg.getToolboxRoot()
 ```
+
+Replace `X.Y.Z` with the downloaded release version. For example, tag `v1.2.3`
+produces `vcpkgWrapper-1.2.3.mltbx`.
 
 Install the wrapper once in a MATLAB environment. MPM and the toolbox installer
 use the same package UUID. When switching installation methods, remove the
 previous installation through its package manager first.
-Both methods expose the runtime folder automatically. Opening `VcpkgToolbox.prj`
-continues to configure the developer paths; no startup scripts are required.
+Both methods expose the runtime folder automatically. For development from a
+clone, opening `VcpkgToolbox.prj` configures the source, helper, and test paths;
+no startup scripts are required.
 
 ### MathWorks Products (https://www.mathworks.com)
 Requires MATLAB release R2020b or newer
+
 - [MATLAB&reg;](https://www.mathworks.com/products/matlab.html)
 
 ### 3rd Party Products
-- [vcpkg](https://github.com/microsoft/vcpkg)
+
+- [vcpkg](https://github.com/microsoft/vcpkg); set `VCPKG_ROOT` to its installation folder.
 - A supported C/C++ compiler; configure it with `mex -setup C++`.
 
 The MPM definition explicitly declares `"dependencies": []`: the wrapper does
@@ -88,7 +94,7 @@ vcpkg.buildVcpkgDeps('path/to/manifest')
 
 When no supported embedded target is detected, dependencies are built for the host using the selected linkage. Host builds explicitly select the same triplet for both `--triplet` and `--host-triplet`.
 
-`vcpkg.getHostTriplet()` selects dynamic host libraries with a preference for Release-only builds; `vcpkg.getHostTriplet(false)` selects static Release-only host libraries. Host triplets come from the installed vcpkg's `triplets` and `triplets/community` folders:
+`vcpkg.getHostTriplet()` selects dynamic host libraries with a preference for Release-only builds; `vcpkg.getHostTriplet(false)` selects static Release-only host libraries. With the default `buildRelease=true`, the host triplets are:
 
 | Host/compiler | Dynamic (default) | Static |
 | --- | --- | --- |
@@ -97,6 +103,10 @@ When no supported embedded target is detected, dependencies are built for the ho
 | Linux | `x64-linux-dynamic-release` if available, otherwise `x64-linux-dynamic` | `x64-linux-release` |
 | macOS / Intel | `x64-osx-dynamic-release` if available, otherwise `x64-osx-dynamic` | `x64-osx-release` |
 | macOS / Apple silicon | `arm64-osx-dynamic-release` if available, otherwise `arm64-osx-dynamic` | `arm64-osx-release` |
+
+Host triplets must be available in the installed vcpkg's `triplets` or
+`triplets/community` folder. Static Release-only and MinGW Release-only builds
+require the corresponding `-release` triplet; they have no fallback.
 
 Applications using dynamic libraries must make the corresponding shared libraries available at runtime.
 
@@ -153,14 +163,15 @@ Each affected root requires an unused drive letter between D: and Z: and
 permission to run Windows `subst`. Existing drives are preserved. The wrapper
 removes its mappings on completion or failure. If no mapping can be created,
 it reports `vcpkg:buildVcpkgDeps:DriveMappingFailed`. Host-only builds use their
-ordinary paths. The earlier MVP's `dependencyRoot` option is removed.
+ordinary paths.
 
 The optional output returns absolute `installRoot`, `buildtreesRoot`,
 `packagesRoot`, `hostDir`, and `targetDir` paths, always referring to physical
-folders rather than temporary drives. Consumers that already use the default
-toolbox-local installation need no settings changes. When forwarding a custom
-install root, configure consumers with the returned folders. For the
-librdkafka Interface for Simulink:
+folders rather than temporary drives. By default, `hostDir` and `targetDir` are
+triplet subfolders under the manifest's `vcpkg_installed` folder. For host-only
+builds or when no supported target is detected, `targetDir` equals `hostDir`.
+Configure consumers with these returned folders, including when forwarding a
+custom install root. For the librdkafka Interface for Simulink:
 
 ```matlab
 s = settings;
@@ -191,24 +202,25 @@ buildtool packagingTest         % Verify toolbox and embedded metadata (R2024b+)
 
 Integration tests require vcpkg and a supported compiler. Target integration tests also require an installed target support package and toolchain; they are skipped when no supported target is detected. Each build uses an isolated temporary manifest and installation folder. JUnit results are written under `results`.
 
-For MATLAB releases without `buildtool`, run `runtests('tests', 'Tag', 'Unit')`. The unit tests use APIs available in R2020b.
+For MATLAB releases older than R2024b, open the project and run `runtests('tests', 'Tag', 'Unit')` directly. The build file requires R2024b or newer; the unit tests use APIs available in R2020b.
 
 ## Building and releasing
 
 Build automation requires MATLAB R2024b or newer. Open `VcpkgToolbox.prj` and run:
 
 ```matlab
-buildtool release              % Build the toolbox using the manifest version.
-buildtool release('v1.2.3')     % Build the toolbox with a release version.
+buildtool release                 % Build using the manifest version locally.
+buildtool("release('v1.2.3')")     % Build with an explicit release version.
 ```
 
 The checks, runtime tests, and packaging tests run before packaging. The installer
-is saved as `release/vcpkg-wrapper-toolbox-v1.2.3.mltbx` in the ignored `release/`
-folder.
+is saved as `release/vcpkgWrapper-1.2.3.mltbx` for version `1.2.3` in the ignored
+`release/` folder. With the current development manifest and no version override,
+the filename is `release/vcpkgWrapper-0.0.0.mltbx`.
 
 `toolbox/resources/mpackage.json` is the single source for package identity,
 version, summary, toolbox description, author, and minimum supported runtime release.
-The embedded MPM description comes from the root `README.md`, which is copied
+The embedded MPM documentation comes from the root `README.md`, which is copied
 into the toolbox. Builds on R2026b or newer use the `readme` field in schema
 1.2.0; earlier releases embed the full README text in the `description` field.
 Its `0.0.0` development version is the default for local builds. A version
@@ -218,8 +230,8 @@ prerelease or build suffixes because `.mltbx` does not support those suffixes.
 Set the manifest version when distributing an untagged source checkout as a release.
 
 The `release` build task calls `packageVcpkg` to build the `.mltbx`
-with its existing UUID and filename. The helper defaults to `release/` and
-accepts an optional `OutputFolder` override.
+with the manifest UUID and filename convention `vcpkgWrapper-X.Y.Z.mltbx`.
+The helper defaults to `release/` and accepts an optional `OutputFolder` override.
 It stages the entire `toolbox` hierarchy under ignored `work`, validates the MPM
 definition, and cleans the staging folder after packaging. Build helpers, tests,
 CI files, and MATLAB project metadata are not shipped.
