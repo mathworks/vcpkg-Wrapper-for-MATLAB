@@ -19,8 +19,8 @@ classdef getHostTripletTest < matlab.unittest.TestCase
     end
 
     methods (Test, TestTags = {'Unit'})
-        function defaultsToDynamicRelease(testCase)
-            expected = getExpectedTriplet(true, true);
+        function defaultsToPlatformLinkageRelease(testCase)
+            expected = getExpectedTriplet(ispc, true);
 
             actual = vcpkg.getHostTriplet();
 
