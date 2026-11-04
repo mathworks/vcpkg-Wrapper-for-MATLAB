@@ -6,7 +6,7 @@ function triplet = getHostTriplet(buildDynamic, buildRelease)
 %   On Windows, the selected compiler distinguishes MSVC from MinGW.
 %
 %   TRIPLET = getHostTriplet(buildDynamic) selects dynamic libraries when
-%   buildDynamic is true (default), or static libraries when false.
+%   buildDynamic is true for PC (default), or static libraries when false.
 %   buildDynamic must be scalar and is converted to logical.
 %
 %   TRIPLET = getHostTriplet(buildDynamic, buildRelease) selects a
@@ -21,7 +21,7 @@ function triplet = getHostTriplet(buildDynamic, buildRelease)
 % Copyright 2025 The MathWorks, Inc.
 
 arguments
-    buildDynamic (1,1) logical = true;
+    buildDynamic (1,1) logical = ispc;
     buildRelease (1,1) logical = true;
 end
 
