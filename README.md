@@ -1,6 +1,6 @@
 # vcpkg Wrapper for MATLAB&reg;
 
-[![View vcpkg Wrapper for MATLAB on File Exchange](https://www.mathworks.com/matlabcentral/images/matlab-file-exchange.svg)](https://www.mathworks.com/matlabcentral/fileexchange/182780-vcpkg-wrapper-for-matlab)
+[![View vcpkg Wrapper for MATLAB on File Exchange](https://www.mathworks.com/matlabcentral/images/matlab-file-exchange.svg)](https://www.mathworks.com/matlabcentral/fileexchange/182780-vcpkg-wrapper-for-matlab) [![CI](https://github.com/mathworks/vcpkg-Wrapper-for-MATLAB/actions/workflows/main.yml/badge.svg)](https://github.com/mathworks/vcpkg-Wrapper-for-MATLAB/actions/workflows/main.yml)
 
 This toolbox wraps [vcpkg - Open source C/C++ dependency manager from Microsoft&reg;](https://vcpkg.io/en/index.html) for MATLAB projects that use vcpkg [manifest mode](https://learn.microsoft.com/en-us/vcpkg/concepts/manifest-mode) to define their C/C++ dependencies.
 The wrapper selects host and target triplets and configures compiler paths automatically. Install vcpkg and a supported compiler, and set `VCPKG_ROOT` to the vcpkg installation folder. The wrapper adds that folder to the system path when building dependencies.
