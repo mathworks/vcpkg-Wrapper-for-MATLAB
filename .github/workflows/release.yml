@@ -29,6 +29,8 @@ jobs:
           
       - name: Set up MATLAB
         uses: matlab-actions/setup-matlab@v3
+        with:
+          cache: true
 
       - name: Build toolbox installer
         uses: matlab-actions/run-build@v3
