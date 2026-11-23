@@ -36,17 +36,20 @@ classdef vcpkgIntegrationTest < matlab.unittest.TestCase
             testCase.verifyEqual(~isempty(findLinkLibraries(fullfile(installFolder, 'debug'))), ~releaseOnly);
         end
 
-        function defaultsToDynamicHostLibraries(testCase)
-            triplet = vcpkg.getHostTriplet(true);
+        function defaultsToPlatformHostLibraries(testCase)
+            defaultBuildDynamic = ispc;
+            triplet = vcpkg.getHostTriplet(defaultBuildDynamic);
             releaseOnly = endsWith(triplet, '-release');
 
             paths = vcpkg.buildVcpkgDeps('manifest', '--x-install-root=../installed', 'buildHostOnly', true);
 
             installFolder = fullfile('installed', triplet);
             testCase.verifyTrue(isfile(fullfile(installFolder, 'include', 'fmt', 'format.h')));
-            testCase.verifyNotEmpty(findSharedLibraries(installFolder));
+            testCase.verifyNotEmpty(findLinkLibraries(installFolder));
+            testCase.verifyEqual(~isempty(findSharedLibraries(installFolder)), defaultBuildDynamic);
             testCase.verifyEqual(~isempty(findLinkLibraries(fullfile(installFolder, 'debug'))), ~releaseOnly);
-            testCase.verifyEqual(~isempty(findSharedLibraries(fullfile(installFolder, 'debug'))), ~releaseOnly);
+            testCase.verifyEqual(~isempty(findSharedLibraries(fullfile(installFolder, 'debug'))), ...
+                defaultBuildDynamic && ~releaseOnly);
             testCase.verifyEqual(paths.installRoot, fullfile(pwd, 'installed'));
             testCase.verifyEqual(paths.hostDir, fullfile(pwd, installFolder));
             testCase.verifyEqual(paths.targetDir, paths.hostDir);
@@ -61,7 +64,8 @@ classdef vcpkgIntegrationTest < matlab.unittest.TestCase
             testCase.verifyEqual(paths.installRoot, ...
                 fullfile(pwd, 'manifest space', 'vcpkg_installed'));
             testCase.verifyTrue(isfile(fullfile(paths.hostDir, 'include', 'fmt', 'format.h')));
-            testCase.verifyNotEmpty(findSharedLibraries(paths.hostDir));
+            testCase.verifyNotEmpty(findLinkLibraries(paths.hostDir));
+            testCase.verifyEqual(~isempty(findSharedLibraries(paths.hostDir)), ispc);
             testCase.verifyEqual(paths.targetDir, paths.hostDir);
         end
 
