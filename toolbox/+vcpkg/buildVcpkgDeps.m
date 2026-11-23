@@ -45,7 +45,7 @@ function dependencyPaths = buildVcpkgDeps(manifestFolder, vpckgArguments, option
 arguments
     manifestFolder char {mustBeFolder}
     vpckgArguments {mustBeText} = {};
-    options.buildDynamic (1,1) logical = true;
+    options.buildDynamic (1,1) logical = ispc;
     options.buildRelease (1,1) logical = true;
     options.buildHostOnly (1,1) logical = false;
     options.vcpkgDebug (1,1) logical = false;
